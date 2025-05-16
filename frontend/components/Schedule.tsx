@@ -159,24 +159,76 @@ export default function Schedule({}: ScheduleProps) {
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/tasks`, {
-        params: {
-          userId: '1', // 这里需要替换为实际的用户ID
-        }
-      });
-
-      if (response.data.success) {
+      console.log('Fetching all tasks');
+      const response = await axios.get(`${API_BASE_URL}/api/user-private-task/list`);
+      
+      // 详细记录响应数据结构
+      console.log('=== API Response Details ===');
+      console.log('Full response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response data.data:', response.data?.data);
+      console.log('Response data.data.records:', response.data?.data?.records);
+      
+      if (response.data?.data?.records) {
         const tasksByDate: TasksType = {};
-        response.data.data.tasks.forEach((task: Task) => {
-          if (!tasksByDate[task.dueDate]) {
-            tasksByDate[task.dueDate] = [];
+        
+        // 处理任务记录
+        const tasksArray = response.data.data.records;
+        console.log('Number of tasks:', tasksArray.length);
+        
+        // 处理每个任务
+        tasksArray.forEach((task: any, index: number) => {
+          console.log(`Processing task ${index + 1}:`, task);
+          
+          if (!task.taskDate) {
+            console.warn(`Task ${index + 1} missing taskDate:`, task);
+            return;
           }
-          tasksByDate[task.dueDate].push(task);
+          
+          const taskDate = task.taskDate;
+          if (!tasksByDate[taskDate]) {
+            tasksByDate[taskDate] = [];
+          }
+
+          // 转换任务格式以匹配前端显示需求
+          const formattedTask: Task = {
+            id: task.id?.toString() || Date.now().toString(),
+            title: task.taskTitle || 'Untitled Task',
+            category: CATEGORIES.DAILY_TASKS,
+            completed: task.taskStatus === 'completed',
+            dueDate: task.taskDate,
+            time: task.startTime,
+            priority: task.priority === 3 ? 'high' : task.priority === 2 ? 'medium' : 'low',
+            tags: [],
+            description: task.taskDescription || '',
+            createdAt: task.createTime || new Date().toISOString(),
+            order: tasksByDate[taskDate].length,
+            repeatType: REPEAT_TYPES.NONE,
+            reminder: {
+              enabled: false,
+              time: '',
+              type: REMINDER_TYPES.NOTIFICATION,
+            },
+          };
+
+          console.log(`Formatted task ${index + 1}:`, formattedTask);
+          tasksByDate[taskDate].push(formattedTask);
         });
+
+        console.log('Final tasks by date:', tasksByDate);
+        console.log('Number of dates with tasks:', Object.keys(tasksByDate).length);
+        
         setTasks(tasksByDate);
+      } else {
+        console.log('No tasks data found in response');
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
+        console.error('Error headers:', error.response?.headers);
+      }
       Alert.alert('Error', 'Failed to fetch tasks');
     }
   };
@@ -255,54 +307,60 @@ export default function Schedule({}: ScheduleProps) {
   };
 
   useEffect(() => {
-    fetchTasks();
+    fetchTasks(); // 初始加载
+
+    // 每5分钟刷新一次任务
+    const intervalId = setInterval(() => {
+      fetchTasks();
+    }, 300000); // 300000ms = 5分钟
+
+    // 清理定时器
+    return () => clearInterval(intervalId);
   }, []);
 
   const addTask = async () => {
-    // if (taskTitle.trim() === "" || selectedDate === "") return;
-    console.log("yes");
-    
+    if (!selectedDate) {
+      Alert.alert('Error', 'Please select a date first');
+      return;
+    }
+
+    const currentTime = new Date().toISOString();
     const taskData = {
-      completionTime: "2025-05-16T15:45:11.450Z",
+      completionTime: null,
       createBy: 0,
-      createTime: "2025-05-16T15:45:11.450Z",
-      endTime: {
-        hour: "9",
-        minute: "30",
-        nano: 0,
-        second: "0"
-      },
-      id: 1,
-      priority: 0,
-      startTime: {
-        hour: "10",
-        minute: "30",
-        nano: 0,
-        second: "0"
-      },
-      taskDate: "2025-05-16",
-      taskDescription: "This is a test task",
+      createTime: currentTime,
+      endTime: taskTime || "23:59:59",
+      id: 0,
+      priority: selectedPriority === 'high' ? 3 : selectedPriority === 'medium' ? 2 : 1,
+      startTime: taskTime || "00:00:00",
+      taskDate: selectedDate,
+      taskDescription: taskDescription || "",
       taskStatus: "in_progress",
-      taskTitle: "Task3",
+      taskTitle: taskTitle || "New Task",
       updateBy: 0,
-      updateTime: "2025-05-16T13:19:45.379Z",
+      updateTime: currentTime,
       userId: 0
     };
 
     try {
-      console.log('Sending task data:', JSON.stringify(taskData, null, 2));
+      console.log('Creating task with data:', {
+        ...taskData,
+        selectedDate
+      });
+      
       const response = await axios.post(`${API_BASE_URL}/api/user-private-task`, taskData, {
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      console.log('API Response:', response.data);
       
-      if (response.data) {
+      console.log('Task creation response:', response.data);
+      
+      if (response.data?.data) {
         // Update local state with the new task
-        const newTask = {
-          id: response.data.id.toString(),
-          title: taskTitle,
+        const newTask: Task = {
+          id: response.data.data.id?.toString() || Date.now().toString(),
+          title: taskTitle || "New Task",
           category: selectedCategory,
           completed: false,
           dueDate: selectedDate,
@@ -310,7 +368,7 @@ export default function Schedule({}: ScheduleProps) {
           priority: selectedPriority,
           tags: selectedTags,
           description: taskDescription,
-          createdAt: new Date().toISOString(),
+          createdAt: currentTime,
           order: tasks[selectedDate]?.length || 0,
           repeatType: repeatType,
           reminder: {
@@ -339,36 +397,71 @@ export default function Schedule({}: ScheduleProps) {
         setReminderTime("");
         setReminderType(REMINDER_TYPES.NOTIFICATION);
         setShowTaskForm(false);
+      } else {
+        console.error('Invalid response format:', response.data);
+        Alert.alert('Error', 'Invalid response from server');
       }
     } catch (error) {
       console.error('Error creating task:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+      }
       Alert.alert('Error', 'Failed to create task');
     }
   };
 
   const toggleTaskComplete = async (dateString: string, taskId: string) => {
-    const task = tasks[dateString].find(t => t.id === taskId);
-    if (!task) return;
-
     try {
-      const updatedTask = await updateTaskStatus(taskId, !task.completed);
-      if (updatedTask) {
+      console.log('Toggling task status:', { dateString, taskId });
+      // 将 taskId 转换为整数
+      const taskIdInt = parseInt(taskId, 10);
+      if (isNaN(taskIdInt)) {
+        console.error('Invalid task ID:', taskId);
+        Alert.alert('Error', 'Invalid task ID');
+        return;
+      }
+
+      const response = await axios.put(`${API_BASE_URL}/api/user-private-task/${taskIdInt}/status`);
+      
+      console.log('Status update response:', response.data);
+      
+      if (response.data?.data !== undefined) {
+        // 更新本地状态
         setTasks((prevTasks) => {
-          const newTasks = {
-            ...prevTasks,
-            [dateString]: prevTasks[dateString].map((task) =>
-              task.id === taskId ? { ...task, completed: !task.completed } : task
-            ),
-          };
+          const newTasks = { ...prevTasks };
+          const taskIndex = newTasks[dateString]?.findIndex(
+            task => task.id === taskId
+          );
           
-          setSelectedTasks(newTasks[dateString] || []);
+          if (taskIndex !== undefined && taskIndex !== -1) {
+            newTasks[dateString] = [...newTasks[dateString]];
+            newTasks[dateString][taskIndex] = {
+              ...newTasks[dateString][taskIndex],
+              completed: response.data.data
+            };
+          }
           
           return newTasks;
         });
+
+        // 更新选中任务列表
+        setSelectedTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === taskId 
+              ? { ...task, completed: response.data.data }
+              : task
+          )
+        );
+      } else {
+        console.error('Invalid response format:', response.data);
+        Alert.alert('Error', 'Failed to update task status');
       }
     } catch (error) {
-      console.error('Error toggling task:', error);
-      Alert.alert('Error', 'Failed to toggle task');
+      console.error('Error updating task status:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+      }
+      Alert.alert('Error', 'Failed to update task status');
     }
   };
 
@@ -393,13 +486,15 @@ export default function Schedule({}: ScheduleProps) {
         onPress={() => onDayPress(date)}
         style={[
           styles.dayContainer,
-          isSelected && styles.selectedDay
+          isSelected && styles.selectedDay,
+          dayTasks.length > 0 && styles.hasTasksDay
         ]}>
         <View style={styles.dayHeader}>
           <Text style={[
             styles.dayText,
-            state === 'disabled' ? styles.disabledDayText : null,
-            isSelected && styles.selectedDayText
+            state === 'disabled' && styles.disabledText,
+            isSelected && styles.selectedText,
+            dayTasks.length > 0 && styles.hasTasksDayText
           ]}>
             {date.day}
           </Text>
@@ -407,13 +502,24 @@ export default function Schedule({}: ScheduleProps) {
         <View style={styles.taskContainer}>
           {dayTasks.slice(0, maxVisibleTasks).map((task, index) => (
             <TouchableOpacity
-              key={task.id}
+              key={`${task.id}-${index}`}
               onPress={() => toggleTaskComplete(dateString, task.id)}
-              style={styles.taskItem}
+              style={[
+                styles.taskItem,
+                task.completed && styles.completedTaskItem,
+                task.priority === 'high' && styles.highPriorityTask,
+                task.priority === 'medium' && styles.mediumPriorityTask,
+                task.priority === 'low' && styles.lowPriorityTask
+              ]}
             >
               <View style={styles.taskTimeContainer}>
                 {task.time && (
-                  <Text style={styles.taskTime}>{task.time}</Text>
+                  <Text style={[
+                    styles.taskTime,
+                    task.completed && styles.completedTaskText
+                  ]}>
+                    {task.time}
+                  </Text>
                 )}
               </View>
               <View style={styles.taskContentContainer}>
@@ -434,7 +540,9 @@ export default function Schedule({}: ScheduleProps) {
               style={styles.moreButton}
               onPress={() => showAllTasks(dateString)}
             >
-              <Text style={styles.moreButtonText}>+{dayTasks.length - maxVisibleTasks} more</Text>
+              <Text style={styles.moreButtonText}>
+                +{dayTasks.length - maxVisibleTasks} more
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -448,29 +556,19 @@ export default function Schedule({}: ScheduleProps) {
     if (quickAddText.trim() === "" || selectedDate === "") return;
 
     const taskData = {
-      completionTime: "2025-05-16T13:19:45.379Z",
+      completionTime: "2025-05-16T16:25:16.097Z",
       createBy: 0,
-      createTime: "2025-05-16T13:19:45.379Z",
-      endTime: {
-        hour: "string",
-        minute: "string",
-        nano: 0,
-        second: "string"
-      },
+      createTime: "2025-05-16T16:25:16.097Z",
+      endTime: "14:30:00",
       id: 0,
       priority: 0,
-      startTime: {
-        hour: "string",
-        minute: "string",
-        nano: 0,
-        second: "string"
-      },
+      startTime: "13:30:00",
       taskDate: "2025-05-16",
       taskDescription: "string",
-      taskStatus: "string",
+      taskStatus: "in_progress",
       taskTitle: "string",
       updateBy: 0,
-      updateTime: "2025-05-16T13:19:45.379Z",
+      updateTime: "2025-05-16T16:25:16.097Z",
       userId: 0
     };
 
@@ -481,17 +579,19 @@ export default function Schedule({}: ScheduleProps) {
           'Content-Type': 'application/json'
         }
       });
-      console.log('API Response:', response.data);
+      console.log('Full API Response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response data.data:', response.data?.data);
       
-      if (response.data) {
+      if (response.data?.data) {
         // Update local state with the new task
         const newTask: Task = {
-          id: response.data.id.toString(),
+          id: response.data.data.id?.toString() || Date.now().toString(),
           title: quickAddText,
           category: CATEGORIES.DAILY_TASKS,
           completed: false,
           dueDate: selectedDate,
-          priority: 'low' as const,
+          priority: 'low',
           tags: [],
           description: "",
           createdAt: new Date().toISOString(),
@@ -515,9 +615,15 @@ export default function Schedule({}: ScheduleProps) {
         // Reset form
         setQuickAddText("");
         setShowQuickAdd(false);
+      } else {
+        console.error('Invalid response format:', response.data);
+        Alert.alert('Error', 'Invalid response from server');
       }
     } catch (error) {
       console.error('Error creating quick task:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+      }
       Alert.alert('Error', 'Failed to create quick task');
     }
   };
@@ -898,6 +1004,33 @@ export default function Schedule({}: ScheduleProps) {
     }
   };
 
+  const getMarkedDates = () => {
+    const marked: { [key: string]: any } = {};
+    
+    Object.keys(tasks).forEach(date => {
+      const dateTasks = tasks[date];
+      const completedCount = dateTasks.filter(task => task.completed).length;
+      const totalCount = dateTasks.length;
+      
+      marked[date] = {
+        marked: true,
+        dotColor: completedCount === totalCount ? 'green' : 'orange',
+        selected: date === selectedDate,
+        selectedColor: 'rgb(255, 136, 0)',
+      };
+    });
+
+    if (selectedDate) {
+      marked[selectedDate] = {
+        ...marked[selectedDate],
+        selected: true,
+        selectedColor: 'rgb(255, 136, 0)',
+      };
+    }
+
+    return marked;
+  };
+
   return (
     <ScrollView 
       style={styles.container}
@@ -909,6 +1042,7 @@ export default function Schedule({}: ScheduleProps) {
         style={styles.calendar}
         onDayPress={onDayPress}
         dayComponent={dayComponent}
+        markedDates={getMarkedDates()}
         theme={{
           backgroundColor: "#000",
           calendarBackground: "rgb(43,36,49)",
@@ -1110,6 +1244,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
     margin: 1,
   },
+  hasTasksDay: {
+    backgroundColor: 'rgba(255, 136, 0, 0.05)',
+    borderColor: 'rgba(255, 136, 0, 0.2)',
+  },
   selectedDay: {
     backgroundColor: 'rgba(255, 136, 0, 0.1)',
     borderWidth: 1,
@@ -1123,26 +1261,40 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     padding: 1,
   },
-  disabledDayText: {
-    color: '#555',
-  },
-  selectedDayText: {
+  hasTasksDayText: {
     color: 'rgb(255, 136, 0)',
   },
   taskContainer: {
     flex: 1,
     marginTop: 2,
     overflow: 'hidden',
+    gap: 2,
   },
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
     paddingVertical: 4,
     paddingHorizontal: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 2,
     minHeight: 24,
+    marginBottom: 2,
+  },
+  completedTaskItem: {
+    backgroundColor: 'rgba(255, 136, 0, 0.1)',
+    opacity: 0.7,
+  },
+  highPriorityTask: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#ff4444',
+  },
+  mediumPriorityTask: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#ffbb33',
+  },
+  lowPriorityTask: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#00C851',
   },
   taskTimeContainer: {
     width: 45,
@@ -1773,6 +1925,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
+  },
+  disabledText: {
+    color: '#555',
+  },
+  selectedText: {
+    color: 'rgb(255, 136, 0)',
   },
 });
 

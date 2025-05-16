@@ -1,0 +1,48 @@
+/* Override default highlight color */
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background: linear-gradient(rgb(120, 52, 230, 0.3), rgb(120, 52, 230, 0.3));
+  background-color: rgb(120, 52, 230, 0.3) !important;
+  -webkit-text-fill-color: white;
+}
+
+/* Remove blue highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* Mobile optimizations */
+@media screen and (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Force content to fit within viewport width */
+  div, p, span, input, button, a {
+    max-width: 100%;
+    word-break: break-word;
+  }
+}
+
+/* Custom scrollbar for the dropdown */
+select::-webkit-scrollbar {
+  width: 8px;
+}
+
+select::-webkit-scrollbar-track {
+  background: rgb(35, 35, 40);
+}
+
+select::-webkit-scrollbar-thumb {
+  background: rgba(120, 52, 230, 0.5);
+  border-radius: 4px;
+}
+
+select::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 52, 230, 0.7);
+} 

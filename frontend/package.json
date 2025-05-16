@@ -1,0 +1,38 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).",
+  "main": "node_modules/expo-router/entry.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-native-community/datetimepicker": "8.2.0",
+    "@react-navigation/native": "^7.0.17",
+    "axios": "^1.9.0",
+    "expo": "^52.0.39",
+    "expo-image-picker": "~16.0.6",
+    "expo-linear-gradient": "~14.0.2",
+    "expo-router": "^4.0.19",
+    "expo-splash-screen": "^0.29.22",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-native": "^0.73.6",
+    "react-native-calendars": "^1.1310.0",
+    "react-native-gesture-handler": "^2.24.0",
+    "react-native-reanimated": "^3.17.1",
+    "react-native-safe-area-context": "^5.3.0",
+    "react-native-screens": "^4.9.2",
+    "react-native-svg": "15.8.0",
+    "react-native-ui-lib": "^7.39.0",
+    "react-native-vector-icons": "^10.2.0",
+    "react-native-web": "~0.19.13"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.12",
+    "typescript": "^5.3.3"
+  }
+}

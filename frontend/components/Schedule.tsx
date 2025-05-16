@@ -123,7 +123,7 @@ const DEFAULT_TEMPLATES: TaskTemplate[] = [
 
 const screenWidth = Dimensions.get('window').width;
 
-const API_BASE_URL = 'http://your-api-base-url';
+const API_BASE_URL = 'http://localhost:8080';
 
 export default function Schedule({}: ScheduleProps) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -161,7 +161,7 @@ export default function Schedule({}: ScheduleProps) {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/tasks`, {
         params: {
-          userId: 'current-user-id', // 这里需要替换为实际的用户ID
+          userId: '1', // 这里需要替换为实际的用户ID
         }
       });
 
@@ -259,28 +259,76 @@ export default function Schedule({}: ScheduleProps) {
   }, []);
 
   const addTask = async () => {
-    if (taskTitle.trim() === "" || selectedDate === "") return;
-
-    const newTask = {
-      title: taskTitle,
-      category: selectedCategory,
-      completed: false,
-      dueDate: selectedDate,
-      time: taskTime,
-      priority: selectedPriority,
-      tags: selectedTags,
-      description: taskDescription,
-      repeatType: repeatType,
-      reminder: {
-        enabled: reminderEnabled,
-        time: reminderTime,
-        type: reminderType,
+    // if (taskTitle.trim() === "" || selectedDate === "") return;
+    console.log("yes");
+    
+    const taskData = {
+      completionTime: "2025-05-16T15:45:11.450Z",
+      createBy: 0,
+      createTime: "2025-05-16T15:45:11.450Z",
+      endTime: {
+        hour: "9",
+        minute: "30",
+        nano: 0,
+        second: "0"
       },
+      id: 1,
+      priority: 0,
+      startTime: {
+        hour: "10",
+        minute: "30",
+        nano: 0,
+        second: "0"
+      },
+      taskDate: "2025-05-16",
+      taskDescription: "This is a test task",
+      taskStatus: "in_progress",
+      taskTitle: "Task3",
+      updateBy: 0,
+      updateTime: "2025-05-16T13:19:45.379Z",
+      userId: 0
     };
 
     try {
-      const createdTask = await createTask(newTask);
-      if (createdTask) {
+      console.log('Sending task data:', JSON.stringify(taskData, null, 2));
+      const response = await axios.post(`${API_BASE_URL}/api/user-private-task`, taskData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('API Response:', response.data);
+      
+      if (response.data) {
+        // Update local state with the new task
+        const newTask = {
+          id: response.data.id.toString(),
+          title: taskTitle,
+          category: selectedCategory,
+          completed: false,
+          dueDate: selectedDate,
+          time: taskTime,
+          priority: selectedPriority,
+          tags: selectedTags,
+          description: taskDescription,
+          createdAt: new Date().toISOString(),
+          order: tasks[selectedDate]?.length || 0,
+          repeatType: repeatType,
+          reminder: {
+            enabled: reminderEnabled,
+            time: reminderTime,
+            type: reminderType,
+          },
+        };
+
+        setTasks((prevTasks) => {
+          const dateTaskList = [...(prevTasks[selectedDate] || []), newTask];
+          return {
+            ...prevTasks,
+            [selectedDate]: dateTaskList,
+          };
+        });
+
+        // Reset form
         setTaskTitle("");
         setTaskTime("");
         setTaskDescription("");
@@ -290,10 +338,11 @@ export default function Schedule({}: ScheduleProps) {
         setReminderEnabled(false);
         setReminderTime("");
         setReminderType(REMINDER_TYPES.NOTIFICATION);
+        setShowTaskForm(false);
       }
     } catch (error) {
-      console.error('Error adding task:', error);
-      Alert.alert('Error', 'Failed to add task');
+      console.error('Error creating task:', error);
+      Alert.alert('Error', 'Failed to create task');
     }
   };
 
@@ -394,32 +443,82 @@ export default function Schedule({}: ScheduleProps) {
   };
 
   const handleQuickAdd = async () => {
+    console.log("yes");
+    
     if (quickAddText.trim() === "" || selectedDate === "") return;
 
-    const newTask = {
-      title: quickAddText,
-      category: CATEGORIES.DAILY_TASKS,
-      completed: false,
-      dueDate: selectedDate,
-      priority: PRIORITIES.MEDIUM,
-      tags: [],
-      repeatType: REPEAT_TYPES.NONE,
-      reminder: {
-        enabled: false,
-        time: '',
-        type: REMINDER_TYPES.NOTIFICATION,
+    const taskData = {
+      completionTime: "2025-05-16T13:19:45.379Z",
+      createBy: 0,
+      createTime: "2025-05-16T13:19:45.379Z",
+      endTime: {
+        hour: "string",
+        minute: "string",
+        nano: 0,
+        second: "string"
       },
+      id: 0,
+      priority: 0,
+      startTime: {
+        hour: "string",
+        minute: "string",
+        nano: 0,
+        second: "string"
+      },
+      taskDate: "2025-05-16",
+      taskDescription: "string",
+      taskStatus: "string",
+      taskTitle: "string",
+      updateBy: 0,
+      updateTime: "2025-05-16T13:19:45.379Z",
+      userId: 0
     };
 
     try {
-      const success = await createTask(newTask);
-      if (success) {
+      console.log('Sending quick task data:', JSON.stringify(taskData, null, 2));
+      const response = await axios.post(`${API_BASE_URL}/api/user-private-task`, taskData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('API Response:', response.data);
+      
+      if (response.data) {
+        // Update local state with the new task
+        const newTask: Task = {
+          id: response.data.id.toString(),
+          title: quickAddText,
+          category: CATEGORIES.DAILY_TASKS,
+          completed: false,
+          dueDate: selectedDate,
+          priority: 'low' as const,
+          tags: [],
+          description: "",
+          createdAt: new Date().toISOString(),
+          order: tasks[selectedDate]?.length || 0,
+          repeatType: REPEAT_TYPES.NONE,
+          reminder: {
+            enabled: false,
+            time: '',
+            type: REMINDER_TYPES.NOTIFICATION,
+          },
+        };
+
+        setTasks((prevTasks) => {
+          const dateTaskList = [...(prevTasks[selectedDate] || []), newTask];
+          return {
+            ...prevTasks,
+            [selectedDate]: dateTaskList,
+          };
+        });
+
+        // Reset form
         setQuickAddText("");
         setShowQuickAdd(false);
       }
     } catch (error) {
-      console.error('Error adding quick task:', error);
-      Alert.alert('Error', 'Failed to add quick task');
+      console.error('Error creating quick task:', error);
+      Alert.alert('Error', 'Failed to create quick task');
     }
   };
 
@@ -728,7 +827,7 @@ export default function Schedule({}: ScheduleProps) {
                 style={[styles.formButton, styles.addButton]}
                 onPress={addTask}
               >
-                <Text style={styles.formButtonText}>Add Task</Text>
+                <Text style={styles.formButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
           </>

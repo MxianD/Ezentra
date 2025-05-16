@@ -4,6 +4,7 @@ import { router, Stack, usePathname } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Navigator from '@/components/Navigator/Navigator';
 import Layout from '@/constants/Layout';
+import { communityService, CommunityResponse } from '@/services/communityService';
 
 interface Community {
   id: string;
@@ -25,12 +26,15 @@ export default function CommunityScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Reset state when pathname changes
     if (pathname === '/community') {
       setSearchQuery('');
       setSelectedTags([]);
+      // Refresh communities when returning to the page
+      fetchCommunities();
     }
 
     // Add responsive layout check
@@ -41,73 +45,48 @@ export default function CommunityScreen() {
     
     updateLayout();
     Dimensions.addEventListener('change', updateLayout);
-
-    const mockPopularCommunities = [
-      {
-        id: '1',
-        name: 'Web3 Developers',
-        description: 'A community for Web3 developers to share knowledge and experiences',
-        memberCount: 1234,
-        rating: 4.9,
-        tags: ['Development', 'Web3', 'Blockchain'],
-      },
-      {
-        id: '2',
-        name: 'DeFi Enthusiasts',
-        description: 'Discuss the latest in decentralized finance',
-        memberCount: 567,
-        rating: 4.8,
-        tags: ['DeFi', 'Finance', 'Blockchain'],
-      },
-    ];
-
-    const mockNewCommunities = [
-      {
-        id: '3',
-        name: 'NFT Artists',
-        description: 'A place for NFT artists to collaborate and share work',
-        memberCount: 345,
-        rating: 4.7,
-        tags: ['NFT', 'Art', 'Creative'],
-      },
-      {
-        id: '4',
-        name: 'Gaming Community',
-        description: 'Connect with fellow gamers and developers',
-        memberCount: 789,
-        rating: 4.6,
-        tags: ['Gaming', 'Development', 'Creative'],
-      },
-    ];
-
-    const mockTopRatedCommunities = [
-      {
-        id: '5',
-        name: 'Smart Contract Auditors',
-        description: 'Professional smart contract auditors sharing best practices',
-        memberCount: 456,
-        rating: 4.9,
-        tags: ['Security', 'Smart Contracts', 'Audit'],
-      },
-      {
-        id: '6',
-        name: 'Crypto Traders',
-        description: 'Trading strategies and market analysis',
-        memberCount: 890,
-        rating: 4.8,
-        tags: ['Trading', 'Analysis', 'Crypto'],
-      },
-    ];
-
-    setPopularCommunities(mockPopularCommunities);
-    setNewCommunities(mockNewCommunities);
-    setTopRatedCommunities(mockTopRatedCommunities);
-    setAllCommunities([
-      ...mockPopularCommunities,
-      ...mockNewCommunities,
-      ...mockTopRatedCommunities,
-    ]);
   }, [pathname]);
+
+  const fetchCommunities = async () => {
+    try {
+      setIsLoading(true);
+      const response = await communityService.getCommunities(1, 50);
+      
+      console.log('API Response:', response);
+      
+      if (response.code === 200 && response.data.records) {
+        const communities = response.data.records.map(community => ({
+          id: community.id.toString(),
+          name: community.communityName,
+          description: community.communityDescription,
+          memberCount: 0,
+          rating: 0,
+          createdAt: new Date(community.createTime).toLocaleDateString(),
+          endDate: community.expireTime ? new Date(community.expireTime).toLocaleDateString() : undefined,
+          tags: [],
+        }));
+
+        console.log('Mapped Communities:', communities);
+
+        // 按创建时间倒序排序
+        const sortedByDate = [...communities].sort((a, b) => 
+          new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
+        );
+
+        // 使用倒序排序后的数据
+        setPopularCommunities(sortedByDate.slice(0, 5));
+        setNewCommunities(sortedByDate.slice(0, 5));
+        setTopRatedCommunities(sortedByDate.slice(0, 5));
+        setAllCommunities(sortedByDate);
+      } else {
+        console.log('No records found in response');
+      }
+    } catch (error) {
+      console.error('Error fetching communities:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const availableTags = [
     'Development', 'Web3', 'Blockchain', 'DeFi', 'Finance',
@@ -186,33 +165,40 @@ export default function CommunityScreen() {
     </TouchableOpacity>
   );
 
-  const CommunitySection = ({ title, communities, showMore = true }: { title: string, communities: Community[], showMore?: boolean }) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {showMore && <Text style={styles.sectionSubtitle}>TOP50</Text>}
+  const CommunitySection = ({ title, communities, showMore = true }: { title: string, communities: Community[], showMore?: boolean }) => {
+    console.log(`Rendering ${title} with communities:`, communities); // Debug log
+    
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {showMore && <Text style={styles.sectionSubtitle}>TOP50</Text>}
+          </View>
+          {showMore && (
+            <TouchableOpacity>
+              <Text style={styles.sectionMore}>more</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        {showMore && (
-          <TouchableOpacity>
-            <Text style={styles.sectionMore}>more</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.sectionContent}>
+          {communities && communities.length > 0 ? (
+            communities.map((community) => (
+              <CommunityCard key={community.id} community={community} />
+            ))
+          ) : (
+            <Text style={styles.noCommunitiesText}>No communities found</Text>
+          )}
+        </View>
       </View>
-      <View style={styles.sectionContent}>
-        {communities.map((community) => (
-          <CommunityCard key={community.id} community={community} />
-        ))}
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <>
     <Stack.Screen
       options={{
         headerShown: false,
-        tabBarStyle: { display: 'none' },
       }}
     />
     <View style={styles.container}>
@@ -261,7 +247,11 @@ export default function CommunityScreen() {
           ))}
         </ScrollView>
 
-        {searchQuery || selectedTags.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading communities...</Text>
+          </View>
+        ) : searchQuery || selectedTags.length > 0 ? (
           <View style={styles.allCommunitiesSection}>
             <Text style={styles.sectionTitle}>Search Results</Text>
             <Text style={styles.communityCount}>{filteredCommunities.length} communities found</Text>
@@ -283,7 +273,12 @@ export default function CommunityScreen() {
           styles.createButton,
           isSmallScreen && styles.createButtonMobile
         ]}
-        onPress={() => router.push('/community/create')}
+        onPress={() => {
+          router.push({
+            pathname: '/community/create',
+            params: { returnTo: '/community' }
+          });
+        }}
       >
         <FontAwesome5 name="plus" size={20} color="#FFFFFF" />
       </TouchableOpacity>
@@ -491,5 +486,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.6)',
     marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 16,
+  },
+  noCommunitiesText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    textAlign: 'center',
+    padding: 20,
   },
 }); 

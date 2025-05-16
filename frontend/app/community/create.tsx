@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Navigator from '@/components/Navigator/Navigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
 
 interface CommunityForm {
   name: string;
@@ -16,6 +17,16 @@ interface CommunityForm {
   isPrivate: boolean;
   startTime: Date;
   endTime: Date;
+}
+
+interface CreateCommunityRequest {
+  communityName: string;
+  communityDescription: string;
+  communityLabelId: number;
+  createBy: number;
+  createTime: string;
+  expireTime: string;
+  userId: number;
 }
 
 const COMMUNITY_TYPES = [
@@ -106,39 +117,120 @@ export default function CreateCommunityScreen() {
 
   const handleCreate = async () => {
     // Validate form
-    if (!form.name.trim()) {
-      Alert.alert('Error', 'Please enter a community name');
-      return;
-    }
-    if (!form.description.trim()) {
-      Alert.alert('Error', 'Please enter a community description');
-      return;
-    }
-    if (!form.type) {
-      Alert.alert('Error', 'Please select a community type');
-      return;
-    }
-    if (form.tags.length === 0) {
-      Alert.alert('Error', 'Please select at least one tag');
-      return;
-    }
-    if (form.endTime <= form.startTime) {
-      Alert.alert('Error', 'End time must be after start time');
+    if (!form.name || !form.description || !form.type || form.tags.length === 0) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    // TODO: Implement API call to create community
-    console.log('Creating community:', form);
-    router.back();
+    try {
+      const requestData: CreateCommunityRequest = {
+        communityName: form.name,
+        communityDescription: form.description,
+        communityLabelId: COMMUNITY_TYPES.indexOf(form.type) + 1, // Assuming type index + 1 is the label ID
+        createBy: 1, // TODO: Replace with actual user ID
+        createTime: form.startTime.toISOString(),
+        expireTime: form.endTime.toISOString(),
+        userId: 1, // TODO: Replace with actual user ID
+      };
+
+      console.log("Sending request:", requestData);
+      const response = await axios.post('http://localhost:8080/api/user-community', requestData, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      console.log("Response:", response.data);
+      
+      if (response.data.code === 200) {  // 使用 code === 200 作为成功标志
+        Alert.alert(
+          'Success', 
+          'Community created successfully',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // 使用 Expo Router 的导航方法
+                router.navigate('/(tabs)/community');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to create community');
+      }
+    } catch (error) {
+      console.error('Error creating community:', error);
+      Alert.alert('Error', 'Failed to create community. Please try again.');
+    }
+  };
+
+  const renderDatePicker = (type: 'start' | 'end') => {
+    if (Platform.OS === 'web') {
+      return (
+        <input
+          type="datetime-local"
+          value={type === 'start' ? form.startTime.toISOString().slice(0, 16) : form.endTime.toISOString().slice(0, 16)}
+          onChange={(e) => {
+            const date = new Date(e.target.value);
+            if (type === 'start') {
+              setForm(prev => ({ ...prev, startTime: date }));
+            } else {
+              setForm(prev => ({ ...prev, endTime: date }));
+            }
+          }}
+          style={{
+            backgroundColor: 'rgba(35, 35, 40, 0.95)',
+            color: 'white',
+            border: '1px solid rgba(120, 52, 230, 0.5)',
+            borderRadius: '8px',
+            padding: '12px',
+            width: '100%',
+            fontSize: '16px',
+          }}
+        />
+      );
+    }
+
+    return (
+      <DateTimePicker
+        value={type === 'start' ? form.startTime : form.endTime}
+        mode="datetime"
+        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+        onChange={(event, selectedDate) => {
+          if (Platform.OS === 'android') {
+            type === 'start' ? setShowStartPicker(false) : setShowEndPicker(false);
+          }
+          if (selectedDate) {
+            setForm(prev => ({
+              ...prev,
+              [type === 'start' ? 'startTime' : 'endTime']: selectedDate
+            }));
+          }
+        }}
+        minimumDate={type === 'end' ? form.startTime : new Date()}
+        style={Platform.OS === 'ios' ? { width: '100%', backgroundColor: 'rgba(35, 35, 40, 0.95)' } : undefined}
+        textColor={Platform.OS === 'ios' ? 'white' : undefined}
+      />
+    );
   };
 
   return (
     <View style={styles.container}>
       <Navigator />
-      <ScrollView style={styles.scrollView}>
-        <TouchableOpacity style={styles.imageUpload} onPress={pickImage}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <TouchableOpacity 
+          style={[styles.imageUpload, { pointerEvents: 'auto' }]} 
+          onPress={pickImage}
+        >
           {form.image ? (
-            <Image source={{ uri: form.image }} style={styles.previewImage} />
+            <Image 
+              source={{ uri: form.image }} 
+              style={styles.previewImage} 
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.uploadPlaceholder}>
               <FontAwesome5 name="image" size={40} color="rgba(255, 255, 255, 0.6)" />
@@ -225,54 +317,40 @@ export default function CreateCommunityScreen() {
             
             <View style={styles.timeSettingRow}>
               <Text style={styles.label}>Start Time</Text>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Text style={styles.timeButtonText}>
-                  {formatDate(form.startTime)}
-                </Text>
-                <FontAwesome5 name="calendar-alt" size={16} color="rgba(255, 255, 255, 0.6)" />
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                renderDatePicker('start')
+              ) : (
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => setShowStartPicker(true)}
+                >
+                  <Text style={styles.timeButtonText}>
+                    {formatDate(form.startTime)}
+                  </Text>
+                  <FontAwesome5 name="calendar-alt" size={16} color="rgba(255, 255, 255, 0.6)" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.timeSettingRow}>
               <Text style={styles.label}>End Time</Text>
-              <TouchableOpacity
-                style={styles.timeButton}
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Text style={styles.timeButtonText}>
-                  {formatDate(form.endTime)}
-                </Text>
-                <FontAwesome5 name="calendar-alt" size={16} color="rgba(255, 255, 255, 0.6)" />
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                renderDatePicker('end')
+              ) : (
+                <TouchableOpacity
+                  style={styles.timeButton}
+                  onPress={() => setShowEndPicker(true)}
+                >
+                  <Text style={styles.timeButtonText}>
+                    {formatDate(form.endTime)}
+                  </Text>
+                  <FontAwesome5 name="calendar-alt" size={16} color="rgba(255, 255, 255, 0.6)" />
+                </TouchableOpacity>
+              )}
             </View>
 
-            {showStartPicker && (
-              <DateTimePicker
-                value={form.startTime}
-                mode="datetime"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleStartTimeChange}
-                minimumDate={new Date()}
-                maximumDate={form.endTime}
-                style={Platform.OS === 'ios' ? { width: '100%', backgroundColor: 'rgba(35, 35, 40, 0.95)' } : undefined}
-                textColor={Platform.OS === 'ios' ? 'white' : undefined}
-              />
-            )}
-
-            {showEndPicker && (
-              <DateTimePicker
-                value={form.endTime}
-                mode="datetime"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleEndTimeChange}
-                minimumDate={form.startTime}
-                style={Platform.OS === 'ios' ? { width: '100%', backgroundColor: 'rgba(35, 35, 40, 0.95)' } : undefined}
-                textColor={Platform.OS === 'ios' ? 'white' : undefined}
-              />
-            )}
+            {Platform.OS !== 'web' && showStartPicker && renderDatePicker('start')}
+            {Platform.OS !== 'web' && showEndPicker && renderDatePicker('end')}
           </View>
 
           <View style={styles.formSection}>
@@ -317,7 +395,7 @@ export default function CreateCommunityScreen() {
               (!form.name || !form.description || !form.type || form.tags.length === 0) && styles.disabledButton,
             ]}
             onPress={handleCreate}
-            disabled={!form.name || !form.description || !form.type || form.tags.length === 0}
+            
           >
             <Text style={styles.createButtonText}>Create Community</Text>
           </TouchableOpacity>

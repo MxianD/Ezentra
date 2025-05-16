@@ -4,6 +4,7 @@ import { router, usePathname } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import styles from "./styles";
 import Layout from '@/constants/Layout';
+import WalletConnect from '../WalletConnect/WalletConnect';
 
 type RoutePath = "/" | "/ranking" | "/schedule" | "/senate" | "/community" | "/profile";
 
@@ -158,6 +159,8 @@ function Navigator() {
         <NavLink to="/community">Community</NavLink>
         <NavLink to="/profile">Profile</NavLink>
       </View>
+
+      <WalletConnect />
     </View>
   );
 

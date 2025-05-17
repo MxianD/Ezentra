@@ -95,3 +95,30 @@ CREATE TABLE IF NOT EXISTS `tb_user_private_task` (
     KEY `idx_user_date` (`user_id`, `task_date`),
     KEY `idx_status` (`task_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户私人任务表';
+
+-- 创建社区任务凭证表
+CREATE TABLE IF NOT EXISTS `tb_community_task_proof` (
+    `id` int NOT NULL AUTO_INCREMENT COMMENT '凭证ID',
+    `community_id` int NOT NULL COMMENT '社区ID',
+    `member_id` int NOT NULL COMMENT '社区成员ID',
+    `task_title` varchar(255) NOT NULL COMMENT '任务标题',
+    `task_description` text COMMENT '任务描述',
+    `proof_type` enum('image','document','video') NOT NULL DEFAULT 'image' COMMENT '凭证类型：图片/文档/视频',
+    `proof_hash` varchar(128) NOT NULL COMMENT 'IPFS哈希值',
+    `file_name` varchar(255) NOT NULL COMMENT '原始文件名',
+    `file_size` bigint NOT NULL COMMENT '文件大小(字节)',
+    `mime_type` varchar(128) NOT NULL COMMENT '文件MIME类型',
+    `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending' COMMENT '状态：待审核/已通过/已拒绝',
+    `review_comment` text COMMENT '审核意见',
+    `review_time` timestamp NULL DEFAULT NULL COMMENT '审核时间',
+    `review_by` int DEFAULT NULL COMMENT '审核人',
+    `create_by` int DEFAULT NULL COMMENT '创建人',
+    `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by` int DEFAULT NULL COMMENT '修改人',
+    `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_member_task` (`member_id`),
+    KEY `idx_community` (`community_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='社区任务凭证表';

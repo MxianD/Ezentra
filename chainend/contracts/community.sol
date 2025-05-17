@@ -67,6 +67,12 @@ contract GoalOrientedCommunity is CommunityTypes {
     mapping(uint256 => mapping(address => Score[])) public memberScores;
     mapping(uint256 => mapping(address => mapping(address => bool))) public hasSenatorScored;
 
+    // 加密相关的映射
+    mapping(uint256 => string) public communityEncryptionKey;  // 社区的加密公钥，用于加密提交内容
+    mapping(uint256 => mapping(address => string)) public encryptedDecryptionKeys;  // 用reviewer/senator的钱包公钥加密后的解密私钥
+    mapping(uint256 => bool) public hasGeneratedKeys;  // 社区是否已经生成了密钥对
+    mapping(uint256 => uint256) public encryptedKeysCount;  // 记录已加密的解密私钥数量
+
     // 事件定义
     event CommunityCreated(uint256 indexed id, address creator, Category category);
     event MemberJoined(uint256 indexed id, address member);
@@ -78,10 +84,52 @@ contract GoalOrientedCommunity is CommunityTypes {
     event ReviewerAdded(uint256 indexed id, address indexed reviewer);
     event CloseVoteSubmitted(uint256 indexed id, address indexed member, bool vote);
     event ReviewerApproval(uint256 indexed id, address indexed reviewer, address indexed member, bool approved);
+    event CommunityKeysGenerated(uint256 indexed communityId, string publicKey);
+    event PrivateKeyEncrypted(uint256 indexed communityId, address indexed accessor, bool isSenator);
 
     constructor(address _senateAddress, address _tokenAddress) {
         senateContract = Senate(_senateAddress);
         communityToken = IERC20(_tokenAddress);
+    }
+
+    // 设置社区的密钥对
+    function setCommunityKeys(uint256 _communityId, string memory _encryptionKey) external {
+        require(!hasGeneratedKeys[_communityId], "Keys already generated");
+        require(reviewers[_communityId].length == 10, "Need 10 reviewers first");
+        require(bytes(_encryptionKey).length > 0, "Invalid encryption key");
+
+        communityEncryptionKey[_communityId] = _encryptionKey;
+        hasGeneratedKeys[_communityId] = true;
+        encryptedKeysCount[_communityId] = 0;
+
+        emit CommunityKeysGenerated(_communityId, _encryptionKey);
+    }
+
+    // 为reviewer或senator设置加密后的私钥
+    function setEncryptedDecryptionKey(uint256 _communityId, address _accessor, string memory _encryptedKey, bool _isSenator) external {
+        require(hasGeneratedKeys[_communityId], "Keys not generated yet");
+        require(bytes(_encryptedKey).length > 0, "Invalid encrypted key");
+        
+        if (_isSenator) {
+            require(senateContract.isSenator(_accessor, communities[_communityId].category),
+                    "Not a valid senator");
+        } else {
+            bool isReviewer = false;
+            for (uint i = 0; i < reviewers[_communityId].length; i++) {
+                if (reviewers[_communityId][i] == _accessor) {
+                    isReviewer = true;
+                    break;
+                }
+            }
+            require(isReviewer, "Not a valid reviewer");
+        }
+
+        require(bytes(encryptedDecryptionKeys[_communityId][_accessor]).length == 0, "Key already set");
+
+        encryptedDecryptionKeys[_communityId][_accessor] = _encryptedKey;
+        encryptedKeysCount[_communityId]++;
+
+        emit PrivateKeyEncrypted(_communityId, _accessor, _isSenator);
     }
 
     // 创建新社区
@@ -179,6 +227,7 @@ contract GoalOrientedCommunity is CommunityTypes {
         require(member.joinTime > 0, "Not a member");
         require(!member.isScored, "Already submitted");
         require(bytes(_submissionUrl).length > 0, "Empty submission URL");
+        require(hasGeneratedKeys[_communityId], "Community keys not generated");
 
         member.submissionUrl = _submissionUrl;
         emit SubmissionUploaded(_communityId, msg.sender, _submissionUrl);

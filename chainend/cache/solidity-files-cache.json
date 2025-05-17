@@ -1,206 +1,9 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/Users/k/Desktop/solMatebuilder/contracts/CommunityTypes.sol": {
-      "lastModificationDate": 1747402644621,
-      "contentHash": "3524ee6ecee98b77045fcb1e8cfa1535",
-      "sourceName": "contracts/CommunityTypes.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.28"
-      ],
-      "artifacts": [
-        "CommunityTypes"
-      ]
-    },
-    "/Users/k/Desktop/solMatebuilder/contracts/community.sol": {
-      "lastModificationDate": 1747385913369,
-      "contentHash": "16c00e4abe8b7a730fe7e947b88e179d",
-      "sourceName": "contracts/community.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./CommunityTypes.sol",
-        "./Senate.sol",
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.28"
-      ],
-      "artifacts": [
-        "GoalOrientedCommunity"
-      ]
-    },
-    "/Users/k/Desktop/solMatebuilder/contracts/Senate.sol": {
-      "lastModificationDate": 1747409677418,
-      "contentHash": "6422136550bfa8efa3a04911caf8f7bb",
-      "sourceName": "contracts/Senate.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./CommunityTypes.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.28"
-      ],
-      "artifacts": [
-        "Senate"
-      ]
-    },
-    "/Users/k/Desktop/solMatebuilder/contracts/Lock.sol": {
-      "lastModificationDate": 1747384703188,
-      "contentHash": "16853a550f7751664f9dc411e4a34ef0",
-      "sourceName": "contracts/Lock.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-        "./community.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.28"
-      ],
-      "artifacts": [
-        "Lock"
-      ]
-    },
-    "/Users/k/Desktop/solMatebuilder/contracts/SubmissionManager.sol": {
-      "lastModificationDate": 1747408900953,
-      "contentHash": "0156d14314de7618847bf1896b9f76dd",
-      "sourceName": "contracts/SubmissionManager.sol",
-      "solcConfig": {
-        "version": "0.8.28",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./CommunityTypes.sol",
-        "./Senate.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.28"
-      ],
-      "artifacts": [
-        "SubmissionManager"
-      ]
-    },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\community.sol": {
-      "lastModificationDate": 1747418291024,
-      "contentHash": "0ec9bcffff2eed124c9d8f357e454171",
+      "lastModificationDate": 1747471348552,
+      "contentHash": "752840694a884ebb0e1925461b38b05e",
       "sourceName": "contracts/community.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -316,8 +119,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\IERC20.sol": {
-      "lastModificationDate": 1747424363448,
-      "contentHash": "8f19f64d2adadf448840908bbaf431c8",
+      "lastModificationDate": 1747466549470,
+      "contentHash": "778af47480c13b77b1966a07ff4b6bd6",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -353,7 +156,7 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\UserAbility.sol": {
-      "lastModificationDate": 1747418291024,
+      "lastModificationDate": 1747466544457,
       "contentHash": "004f1b28ac766e21217415d0b39b5bae",
       "sourceName": "contracts/UserAbility.sol",
       "solcConfig": {
@@ -433,7 +236,7 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\Lock.sol": {
-      "lastModificationDate": 1747418291022,
+      "lastModificationDate": 1747466544453,
       "contentHash": "967dd5f54fa5e0e0dd111963cabf1190",
       "sourceName": "contracts/Lock.sol",
       "solcConfig": {
@@ -473,8 +276,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\extensions\\IERC20Metadata.sol": {
-      "lastModificationDate": 1747424363452,
-      "contentHash": "794db3115001aa372c79326fcfd44b1f",
+      "lastModificationDate": 1747466549477,
+      "contentHash": "f2b8a04309de70068525c84e8ff0de09",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -512,8 +315,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\ERC20.sol": {
-      "lastModificationDate": 1747424363287,
-      "contentHash": "57d79df281f57bbb1b09214c7914f877",
+      "lastModificationDate": 1747466549469,
+      "contentHash": "aa07ccaeadfe79f7ad36238bd1f507e4",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -554,8 +357,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
-      "lastModificationDate": 1747424363234,
-      "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
+      "lastModificationDate": 1747466549503,
+      "contentHash": "2783b901218e982baedae531a748ed8d",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -591,8 +394,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\node_modules\\@openzeppelin\\contracts\\interfaces\\draft-IERC6093.sol": {
-      "lastModificationDate": 1747424363253,
-      "contentHash": "267d92fe4de67b1bdb3302c08f387dbf",
+      "lastModificationDate": 1747466549443,
+      "contentHash": "1d1602f392ece4ad9d8619d8330cf62a",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -630,7 +433,7 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\TestToken.sol": {
-      "lastModificationDate": 1747418291024,
+      "lastModificationDate": 1747466544456,
       "contentHash": "8c1c15ca86f91933f1e0d3e64ac81343",
       "sourceName": "contracts/TestToken.sol",
       "solcConfig": {

@@ -15,6 +15,8 @@ import {
 } from '@/components/icons/StatIcons';
 import { proofService } from '@/services/proofService';
 import axios from 'axios';
+import { ethers } from 'ethers';
+import "@ethersproject/shims";
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -304,7 +306,36 @@ export default function CommunityDetailsScreen() {
         );
 
         if (uploadResult.code === 200) {
-          Alert.alert('Success', 'Proof uploaded successfully to IPFS!');
+          // 调用智能合约提交文件URL
+          try {
+            const { ethereum } = window;
+            if (!ethereum) {
+              throw new Error('Please install MetaMask!');
+            }
+
+            // 获取合约实例
+            const provider = new ethers.providers.Web3Provider(ethereum);
+            const signer = provider.getSigner();
+            const communityContract = new ethers.Contract(
+              '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', // 本地测试网络合约地址
+              ['function submitCompletion(uint256 _communityId, string memory _submissionUrl)'],
+              signer
+            );
+
+            // 调用合约
+            const tx = await communityContract.submitCompletion(
+              parseInt(id as string),
+              uploadResult.data.proofHash // 使用 proofHash 作为提交URL
+            );
+
+            // 等待交易确认
+            await tx.wait();
+
+            Alert.alert('Success', 'Proof uploaded and submitted to blockchain successfully!');
+          } catch (contractError) {
+            console.error('Error submitting to blockchain:', contractError);
+            Alert.alert('Warning', 'File uploaded but blockchain submission failed. Please try submitting to blockchain again.');
+          }
         } else {
           throw new Error(uploadResult.message);
         }

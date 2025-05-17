@@ -91,6 +91,29 @@ export default function CommunityDetailsScreen() {
       setIsLoading(true);
       setError(null);
 
+      // 获取当前连接的钱包地址
+      const { ethereum } = window;
+      if (!ethereum) {
+        throw new Error('Please install MetaMask!');
+      }
+
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+      console.log('Current user address:', userAddress);
+
+      // 获取用户详情
+      console.log('Fetching user details...');
+      const userResponse = await api.get(`/api/user/address/${userAddress}`);
+      console.log('User details response:', userResponse.data);
+      
+      if (userResponse.data.code !== 200) {
+        throw new Error('Failed to get user details');
+      }
+      
+      const userData = userResponse.data.data;
+      console.log('User data:', userData);
+
       // Fetch community details
       const communityResponse = await api.get(`/api/user-community/${id}`);
       const communityData = communityResponse.data;
@@ -100,84 +123,96 @@ export default function CommunityDetailsScreen() {
       let logoUrl = 'https://picsum.photos/200'; // Default logo
       try {
         const logoResponse = await api.get(`/api/user-community/${id}/logo`);
-        console.log(logoResponse, 'logoResponse');
         if (logoResponse.data && logoResponse.data.url) {
           logoUrl = logoResponse.data.url;
         }
       } catch (logoErr) {
         console.warn('Failed to fetch community logo:', logoErr);
-        // Continue with default logo
       }
 
-      // Fetch community members
-      const membersResponse = await api.get(`/api/community-member/${id}`);
-      console.log('Raw members response:', membersResponse.data);
-      
-      // Handle different possible data structures
-      let membersData;
-      if (Array.isArray(membersResponse.data)) {
-        membersData = membersResponse.data;
-      } else if (membersResponse.data && Array.isArray(membersResponse.data.members)) {
-        membersData = membersResponse.data.members;
-      } else if (membersResponse.data && typeof membersResponse.data === 'object') {
-        // If it's a single member object, convert to array
-        membersData = [membersResponse.data];
+      // Fetch community members with pagination
+      console.log('Fetching community members...');
+      const membersResponse = await api.get('/api/community-member/list', {
+        params: {
+          current: 1,
+          size: 100,
+          communityId: parseInt(id as string)
+        }
+      });
+      console.log('Full members response:', membersResponse);
+      console.log('Members response data:', membersResponse.data);
+      console.log('Members response data type:', typeof membersResponse.data);
+      console.log('Members response data keys:', Object.keys(membersResponse.data));
+
+      // Process members data
+      let membersData = [];
+      if (membersResponse.data && membersResponse.data.data && Array.isArray(membersResponse.data.data.records)) {
+        membersData = membersResponse.data.data.records;
+        console.log('Members data after assignment:', membersData);
       } else {
-        membersData = [];
+        console.log('No records found in response data');
       }
-      
-      console.log('Processed membersData:', membersData);
 
-      // Ensure all required fields are present in members data
-      const validatedMembers = membersData.map((member: any) => {
-        console.log('Processing member:', member);
-        return {
-          id: String(member.id || member.userId || ''),
-          name: member.name || member.userName || 'Unknown',
-          avatar: member.avatar || member.userAvatar || 'https://picsum.photos/200',
-          role: member.role || member.memberRole || 'Member',
-          joinDate: member.joinDate || member.createTime || new Date().toISOString().split('T')[0],
-          skillPoints: member.skillPoints || 0
-        };
+      // 检查数据是否为空
+      if (!membersData || membersData.length === 0) {
+        console.log('Members data is empty, skipping membership check');
+        return;
+      }
+
+      // 检查用户数据是否存在
+      if (!userData || !userData.id) {
+        console.log('User data is missing or invalid:', userData);
+        return;
+      }
+
+      // Check if current user is a member
+      console.log('Starting membership check with:', {
+        membersDataLength: membersData.length,
+        userId: userData.id
       });
 
-      console.log('Validated members:', validatedMembers);
+      const isUserMember = membersData.some((member: any) => {
+        console.log('Processing member:', member);
+        const isMember = member.userId === userData.id;
+        console.log(member.userId, userData.id, "@@@");
+        
+        console.log('Checking member:', {
+          memberUserId: member.userId,
+          currentUserId: userData.id,
+          isMatch: isMember
+        });
+        return isMember;
+      });
+      console.log('Final membership check result:', isUserMember);
+
+      // Ensure all required fields are present in members data
+      const validatedMembers = membersData.map((member: any) => ({
+        id: String(member.id || member.userId || ''),
+        name: member.name || member.userName || 'Unknown',
+        avatar: member.avatar || member.userAvatar || 'https://picsum.photos/200',
+        role: member.role || member.memberRole || 'Member',
+        joinDate: member.joinDate || member.createTime || new Date().toISOString().split('T')[0],
+        skillPoints: member.skillPoints || 0
+      }));
 
       // Create review board data from members
       const reviewBoard = {
         id: '1',
-        members: [
-          {
-            id: '1',
-            name: 'Admin User',
-            role: 'Founder' as const,
-            avatar: 'https://picsum.photos/50'
-          },
-          {
-            id: '2',
-            name: 'Reviewer One',
-            role: 'Reviewer' as const,
-            avatar: 'https://picsum.photos/51'
-          },
-          {
-            id: '3',
-            name: 'Reviewer Two',
-            role: 'Reviewer' as const,
-            avatar: 'https://picsum.photos/52'
-          }
-        ],
+        members: validatedMembers.filter((member: any) => 
+          member.role === 'Founder' || member.role === 'Reviewer'
+        ),
         rating: 4.8
       };
 
-      // Add current task data
-      const currentTask = {
+      // Add current task data if user is a member
+      const currentTask = isUserMember ? {
         id: '1',
         title: 'Welcome Task',
         description: 'Complete your profile and introduce yourself to the community',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         reward: '100 POINTS',
         status: 'active' as const
-      };
+      } : undefined;
 
       // Combine all data
       const combinedData: CommunityDetails = {
@@ -185,7 +220,7 @@ export default function CommunityDetailsScreen() {
         imageUrl: logoUrl,
         members: validatedMembers,
         memberCount: validatedMembers.length,
-        isJoined: true, // Always show as joined
+        isJoined: isUserMember,
         reviewBoard: reviewBoard,
         currentTask: currentTask
       };
@@ -210,51 +245,215 @@ export default function CommunityDetailsScreen() {
     }
   };
 
+  // 检查用户是否在社区中
+  const checkUserInCommunity = async (userAddress: string) => {
+    try {
+      // 调用后端 API 获取社区成员列表（分页数据）
+      const response = await api.get(`/api/community-member/${id}`, {
+        params: {
+          current: 1,
+          size: 100  // 设置一个合理的页面大小
+        }
+      });
+      console.log('Community members pagination data:', response.data);
+
+      // 检查返回的数据结构
+      if (!response.data || !response.data.records) {
+        console.log('No members data found');
+        return false;
+      }
+
+      // 检查用户是否在成员列表中
+      const isMember = response.data.records.some((member: any) => 
+        member.walletAddress === userAddress
+      );
+      
+      console.log('Is user in community:', isMember);
+      return isMember;
+    } catch (err) {
+      console.error('Error checking user in community:', err);
+      return false;
+    }
+  };
+
   const handleJoinCommunity = async () => {
     try {
-      // Get current user ID from your auth context or storage
-      const currentUserId = 1; // TODO: Replace with actual user ID from auth context
-
-      const joinData = {
-        communityId: parseInt(id as string),
-        userId: currentUserId,
-        memberRole: 'Member',
-        createTime: new Date().toISOString(),
-        updateTime: new Date().toISOString(),
-        createBy: currentUserId,
-        updateBy: currentUserId
-      };
-
-      const response = await api.post('/api/community-member', joinData);
-      console.log('Join response:', response.data);
+      console.log('Starting join community process...');
       
-      // Update community state immediately to show joined content
-      setCommunity(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          isJoined: true,
-          memberCount: (prev.memberCount || 0) + 1,
-          members: [
-            ...(prev.members || []),
-            {
-              id: String(currentUserId),
-              name: 'You', // TODO: Replace with actual user name
-              avatar: 'https://picsum.photos/200',
-              role: 'Member',
-              joinDate: new Date().toISOString().split('T')[0],
-              skillPoints: 0
-            }
-          ]
+      // 获取当前连接的钱包地址
+      const { ethereum } = window;
+      if (!ethereum) {
+        console.log('MetaMask not found');
+        Alert.alert('Error', 'Please install MetaMask!');
+        return;
+      }
+
+      // 请求用户连接钱包
+      try {
+        await ethereum.request({ method: 'eth_requestAccounts' });
+      } catch (error) {
+        console.error('Error requesting accounts:', error);
+        Alert.alert('Error', 'Please connect your MetaMask wallet first');
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+      console.log('Connected wallet address:', userAddress);
+
+      // 检查用户是否已在社区中
+      const isInCommunity = await checkUserInCommunity(userAddress);
+      if (isInCommunity) {
+        console.log('User is already a member of this community');
+        Alert.alert('Error', 'You are already a member of this community.');
+        return;
+      }
+
+      // 调用智能合约加入社区
+      console.log('Initializing contract...');
+      const communityContract = new ethers.Contract(
+        '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', // 本地测试网络合约地址
+        [
+          'function joinCommunity(uint256 _communityId) external payable',
+          'function STAKE_AMOUNT() view returns (uint256)',
+          'function communities(uint256) view returns (uint256 id, string name, string description, address creator, uint256 startTime, uint256 endTime, string targetGoal, uint256 memberDeposit, uint256 rewardPerMember, uint256 maxMembers, uint256 totalMembers, uint256 rewardPool, uint256 depositPool, bool isClosed, uint8 category, uint256 passingScore)',
+          'function communityToken() external view returns (address)'
+        ],
+        signer
+      );
+
+      // 获取社区信息
+      console.log('Fetching community info...');
+      const communityInfo = await communityContract.communities(parseInt(id as string));
+      console.log('Community info:', communityInfo);
+      
+      // 检查社区状态
+      if (communityInfo.isClosed) {
+        console.log('Community is closed');
+        Alert.alert('Error', 'This community is closed.');
+        return;
+      }
+
+      // 获取质押金额
+      console.log('Getting stake amount...');
+      const stakeAmount = await communityContract.STAKE_AMOUNT();
+      console.log('Stake amount:', stakeAmount.toString());
+
+      // 获取代币合约地址
+      const tokenAddress = await communityContract.communityToken();
+      console.log('Token address:', tokenAddress);
+
+      // 创建代币合约实例
+      const tokenABI = [
+        "function approve(address spender, uint256 amount) external returns (bool)",
+        "function allowance(address owner, address spender) external view returns (uint256)",
+        "function balanceOf(address account) external view returns (uint256)"
+      ];
+      const tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
+
+      // 检查代币余额
+      const tokenBalance = await tokenContract.balanceOf(userAddress);
+      console.log('Token balance:', tokenBalance.toString());
+
+      // 检查当前授权额度
+      const currentAllowance = await tokenContract.allowance(userAddress, communityContract.address);
+      console.log('Current allowance:', currentAllowance.toString());
+
+      // 如果授权额度不足，请求授权
+      if (currentAllowance.lt(stakeAmount)) {
+        console.log('Approving tokens...');
+        const approveTx = await tokenContract.approve(communityContract.address, stakeAmount);
+        console.log('Approval transaction sent:', approveTx.hash);
+        await approveTx.wait();
+        console.log('Approval confirmed');
+      }
+
+      // 调用合约加入社区
+      console.log('Calling joinCommunity contract function...');
+      const tx = await communityContract.joinCommunity(
+        parseInt(id as string),
+        { 
+          value: communityInfo.memberDeposit,
+          gasLimit: 1000000 // 增加gas限制
+        }
+      );
+      console.log('Transaction sent:', tx.hash);
+
+      // 等待交易确认
+      console.log('Waiting for transaction confirmation...');
+      await tx.wait();
+      console.log('Transaction confirmed');
+
+      // 调用后端 API 记录加入信息
+      console.log('Calling backend API...');
+      
+      try {
+        // 获取用户信息
+        const userResponse = await api.get(`/api/user/address/${userAddress}`);
+        if (userResponse.data.code !== 200) {
+          throw new Error('Failed to get user details');
+        }
+        
+        const userData = userResponse.data.data;
+        console.log('User data:', userData);
+
+        const joinData = {
+          communityId: parseInt(id as string),
+          userId: userData.id,
+          createBy: userData.id,
+          updateBy: userData.id,
+          memberRole: 'member',
+          createTime: new Date().toISOString(),
+          updateTime: new Date().toISOString()
         };
-      });
 
-      Alert.alert('Success', 'You have joined the community!');
-      
-      // Refresh community details in the background
-      fetchCommunityDetails();
+        console.log('Join request data:', joinData);
+
+        const response = await api.post('/api/community-member', joinData, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        console.log('Backend API response:', response.data);
+        
+        // Update community state immediately to show joined content
+        console.log('Updating UI state...');
+        setCommunity(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            isJoined: true,
+            memberCount: (prev.memberCount || 0) + 1,
+            members: [
+              ...(prev.members || []),
+              {
+                id: userAddress,
+                name: userData.name || userAddress.slice(0, 6) + '...' + userAddress.slice(-4),
+                avatar: userData.avatar || 'https://picsum.photos/200',
+                role: 'Member',
+                joinDate: new Date().toISOString().split('T')[0],
+                skillPoints: 0
+              }
+            ]
+          };
+        });
+
+        Alert.alert('Success', 'You have joined the community!');
+        console.log('Join community process completed successfully');
+        
+        // Refresh community details in the background
+        fetchCommunityDetails();
+      } catch (error: any) {
+        console.error('Backend API error:', error);
+        if (error.response) {
+          console.error('Error response:', error.response.data);
+        }
+        Alert.alert('Error', 'Failed to sync with backend. Please try again.');
+      }
     } catch (err) {
-      console.error('Error joining community:', err);
+      console.error('Error in join community process:', err);
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 409) {
           Alert.alert('Error', 'You are already a member of this community.');
@@ -448,14 +647,17 @@ export default function CommunityDetailsScreen() {
                   <Text style={styles.dateText}>Ends {community.endDate}</Text>
                 </View>
               )}
-              {!community.isJoined ? (
+              {!community.isJoined && (
                 <TouchableOpacity
                   style={styles.joinButton}
-                  onPress={handleJoinCommunity}
+                  onPress={() => {
+                    console.log('Join button clicked');
+                    handleJoinCommunity();
+                  }}
                 >
                   <Text style={styles.joinButtonText}>Join Community</Text>
                 </TouchableOpacity>
-              ) : null}
+              )}
             </View>
 
             {/* Add Audit Button for Reviewers */}

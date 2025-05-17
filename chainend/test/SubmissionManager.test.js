@@ -7,6 +7,7 @@ describe("SubmissionManager", function () {
   let owner;
   let senator1;
   let senator2;
+  let senator3;
   let member;
   const communityId = 1;
   
@@ -19,11 +20,12 @@ describe("SubmissionManager", function () {
     const SubmissionManager = await ethers.getContractFactory("SubmissionManager");
     submissionManager = await SubmissionManager.deploy(await senate.getAddress());
 
-    [owner, senator1, senator2, member] = await ethers.getSigners();
+    [owner, senator1, senator2, senator3, member] = await ethers.getSigners();
 
     // 设置参议员
     await senate.addSenator(senator1.address, 0); // 假设 category 0
     await senate.addSenator(senator2.address, 0);
+    await senate.addSenator(senator3.address, 0);
   });
 
   describe("提交内容", function () {
@@ -74,9 +76,35 @@ describe("SubmissionManager", function () {
     });
 
     it("所有参议员评分后应该计算最终分数", async function () {
+      // 第一个参议员评分
+      console.log("\n评分详情：");
       await submissionManager.connect(senator1).submitScore(communityId, member.address, 80);
-      await expect(submissionManager.connect(senator2).submitScore(communityId, member.address, 90))
-        .to.emit(submissionManager, "FinalScoreCalculated");
+      console.log(`Senator 1 评分：80`);
+      
+      // 第二个参议员评分
+      await submissionManager.connect(senator2).submitScore(communityId, member.address, 90);
+      console.log(`Senator 2 评分：90`);
+      
+      // 第三个参议员评分，应该触发最终分数计算
+      await submissionManager.connect(senator3).submitScore(communityId, member.address, 85);
+      console.log(`Senator 3 评分：85`);
+      
+      // 获取并验证最终分数
+      const [finalScore, isScored] = await submissionManager.getFinalScore(communityId, member.address);
+      console.log(`\n最终分数：${finalScore}`);
+      
+      // 获取每个评分者的信誉度
+      const reputation1 = await submissionManager.scorerInfo(senator1.address);
+      const reputation2 = await submissionManager.scorerInfo(senator2.address);
+      const reputation3 = await submissionManager.scorerInfo(senator3.address);
+      
+      console.log(`\n评分者信誉度：`);
+      console.log(`Senator 1: ${reputation1.reputation}`);
+      console.log(`Senator 2: ${reputation2.reputation}`);
+      console.log(`Senator 3: ${reputation3.reputation}\n`);
+      
+      expect(isScored).to.be.true;
+      expect(finalScore).to.be.gt(0);
     });
   });
 });

@@ -421,7 +421,21 @@ export default function Schedule({}: ScheduleProps) {
         return;
       }
 
-      const response = await axios.put(`${API_BASE_URL}/api/user-private-task/${taskIdInt}/status`);
+      // 获取当前任务状态
+      const currentTask = tasks[dateString]?.find(task => task.id === taskId);
+      if (!currentTask) {
+        console.error('Task not found:', taskId);
+        Alert.alert('Error', 'Task not found');
+        return;
+      }
+
+      // 确定新的任务状态
+      const newStatus = currentTask.completed ? 'in_progress' : 'completed';
+
+      // 调用 API 更新任务状态
+      const response = await axios.put(
+        `${API_BASE_URL}/api/user-private-task/${taskIdInt}/status?taskStatus=${newStatus}`
+      );
       
       console.log('Status update response:', response.data);
       
@@ -437,7 +451,7 @@ export default function Schedule({}: ScheduleProps) {
             newTasks[dateString] = [...newTasks[dateString]];
             newTasks[dateString][taskIndex] = {
               ...newTasks[dateString][taskIndex],
-              completed: response.data.data
+              completed: newStatus === 'completed'
             };
           }
           
@@ -448,7 +462,7 @@ export default function Schedule({}: ScheduleProps) {
         setSelectedTasks(prevTasks => 
           prevTasks.map(task => 
             task.id === taskId 
-              ? { ...task, completed: response.data.data }
+              ? { ...task, completed: newStatus === 'completed' }
               : task
           )
         );
@@ -460,6 +474,7 @@ export default function Schedule({}: ScheduleProps) {
       console.error('Error updating task status:', error);
       if (axios.isAxiosError(error)) {
         console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
       }
       Alert.alert('Error', 'Failed to update task status');
     }

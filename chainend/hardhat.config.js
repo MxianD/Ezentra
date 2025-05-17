@@ -17,6 +17,11 @@ module.exports = {
     // 本地测试网络
     hardhat: {
     },
+    // 本地节点
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 31337
+    },
     // 测试网络
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",

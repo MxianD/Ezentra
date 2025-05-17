@@ -1,3 +1,4 @@
+import '@ethersproject/shims';
 import './global.css';
 import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';

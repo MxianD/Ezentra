@@ -13,6 +13,7 @@ import {
   IconMusic, 
   IconComputer 
 } from '@/components/icons/StatIcons';
+import { proofService } from '@/services/proofService';
 
 interface CommunityDetails {
   id: string;
@@ -379,20 +380,54 @@ export default function CommunityDetailsScreen() {
   };
 
   const handleUploadProof = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setIsUploading(true);
-      // TODO: Implement API call to upload proof
-      setTimeout(() => {
-        Alert.alert('Success', 'Proof uploaded successfully!');
-        setIsUploading(false);
-      }, 1500);
+      if (!result.canceled) {
+        setIsUploading(true);
+        
+        // Create a File object from the image URI
+        const response = await fetch(result.assets[0].uri);
+        const blob = await response.blob();
+        
+        // Check file size (10MB = 10 * 1024 * 1024 bytes)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        if (blob.size > MAX_FILE_SIZE) {
+          Alert.alert(
+            'File Too Large',
+            'The selected file is too large. Maximum file size is 10MB.'
+          );
+          setIsUploading(false);
+          return;
+        }
+
+        const file = new File([blob], 'proof.jpg', { type: 'image/jpeg' });
+
+        // Upload to IPFS through our backend
+        const uploadResult = await proofService.uploadProof(
+          parseInt(id as string),
+          1, // TODO: Replace with actual member ID from user context
+          community?.currentTask?.title || '',
+          community?.currentTask?.description || '',
+          file
+        );
+
+        if (uploadResult.code === 200) {
+          Alert.alert('Success', 'Proof uploaded successfully to IPFS!');
+        } else {
+          throw new Error(uploadResult.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading proof:', error);
+      Alert.alert('Error', 'Failed to upload proof. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 

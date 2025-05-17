@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Navigator from '@/components/Navigator/Navigator';
+
+interface ProofFile {
+  id: number;
+  communityId: number;
+  fileName: string;
+  proofHash: string;
+  proofType: string;
+  taskTitle: string;
+  taskDescription: string;
+  createTime: string;
+  updateTime: string;
+  createBy: number;
+  updateBy: number;
+  memberId: number;
+}
 
 interface ReviewedFile {
   id: string;
@@ -11,6 +26,7 @@ interface ReviewedFile {
   score: number;
   reviewDate: string;
   status: 'pending' | 'approved' | 'rejected';
+  proofHash?: string;
 }
 
 interface Reviewer {
@@ -29,34 +45,39 @@ export default function CommunityAuditScreen() {
   const [selectedFile, setSelectedFile] = useState<ReviewedFile | null>(null);
   const [score, setScore] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [reviewedFiles, setReviewedFiles] = useState<ReviewedFile[]>([]);
 
-  // Mock data for reviewed files
-  const [reviewedFiles, setReviewedFiles] = useState<ReviewedFile[]>([
-    {
-      id: '1',
-      fileName: 'Project_Proposal.pdf',
-      submitter: 'John Doe',
-      score: 85,
-      reviewDate: '2024-03-15',
-      status: 'pending'
-    },
-    {
-      id: '2',
-      fileName: 'Design_Document.docx',
-      submitter: 'Jane Smith',
-      score: 92,
-      reviewDate: '2024-03-14',
-      status: 'approved'
-    },
-    {
-      id: '3',
-      fileName: 'Game_Concept.md',
-      submitter: 'Mike Johnson',
-      score: 78,
-      reviewDate: '2024-03-13',
-      status: 'rejected'
+  // Fetch files from API
+  useEffect(() => {
+    fetchFiles();
+  }, [id]);
+
+  const fetchFiles = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/community/task/proof/community/${id}`);
+      const result = await response.json();
+      
+      if (result.code === 0 && result.data) {
+        const formattedFiles = result.data.map((file: ProofFile) => ({
+          id: file.id.toString(),
+          fileName: file.fileName,
+          submitter: `Member ${file.memberId}`, // You might want to fetch member details separately
+          score: 0, // Initial score
+          reviewDate: new Date(file.createTime).toLocaleDateString(),
+          status: 'pending' as const,
+          proofHash: file.proofHash
+        }));
+        setReviewedFiles(formattedFiles);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch files');
+      console.error('Error fetching files:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
 
   const reviewers: Reviewer[] = [
     {
@@ -126,6 +147,43 @@ export default function CommunityAuditScreen() {
     setIsModalVisible(false);
     setScore('');
     setSelectedFile(null);
+  };
+
+  const handleDownload = async (file: ReviewedFile) => {
+    if (!file.proofHash) {
+      Alert.alert('Error', 'No file hash available');
+      return;
+    }
+
+    try {
+      const ipfsGateway = 'https://dweb.link/ipfs/';
+      const downloadUrl = `${ipfsGateway}${file.proofHash}`;
+      
+      Alert.alert(
+        'Download File',
+        `Would you like to download ${file.fileName}?`,
+        [
+          {
+            text: 'Open in Browser',
+            onPress: async () => {
+              const supported = await Linking.canOpenURL(downloadUrl);
+              if (supported) {
+                await Linking.openURL(downloadUrl);
+              } else {
+                Alert.alert('Error', 'Cannot open URL in browser');
+              }
+            }
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to prepare file for download');
+      console.error('Error preparing download:', error);
+    }
   };
 
   return (
@@ -243,6 +301,13 @@ export default function CommunityAuditScreen() {
                   <FontAwesome5 name="calendar" size={14} color="#6B7280" />
                   <Text style={styles.detailText}>{file.reviewDate}</Text>
                 </View>
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={() => handleDownload(file)}
+                >
+                  <FontAwesome5 name="download" size={14} color="#7834E6" />
+                  <Text style={styles.downloadButtonText}>Download</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))}
@@ -484,6 +549,7 @@ const styles = StyleSheet.create({
   fileDetails: {
     flexDirection: 'row',
     gap: 16,
+    alignItems: 'center',
   },
   detailItem: {
     flexDirection: 'row',
@@ -493,6 +559,21 @@ const styles = StyleSheet.create({
   detailText: {
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(120, 52, 230, 0.1)',
+  },
+  downloadButtonText: {
+    color: '#7834E6',
+    fontSize: 14,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,

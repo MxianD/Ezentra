@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -14,6 +14,16 @@ import {
   IconComputer 
 } from '@/components/icons/StatIcons';
 import { proofService } from '@/services/proofService';
+import axios from 'axios';
+
+// Create axios instance with base URL
+const api = axios.create({
+  baseURL: 'http://localhost:8080',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 interface CommunityDetails {
   id: string;
@@ -65,318 +75,194 @@ interface CommunityMember {
 export default function CommunityDetailsScreen() {
   const { id } = useLocalSearchParams();
   const [community, setCommunity] = useState<CommunityDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
 
   useEffect(() => {
-    // Mock data based on static data structure
-    const mockCommunities = {
-      '1': {
-        id: '1',
-        name: 'Web3 Developers',
-        description: 'A community for Web3 developers to share knowledge and experiences. Join us to learn, share, and grow together in the Web3 space.',
-        memberCount: 1234,
-        imageUrl: 'https://picsum.photos/200',
-        isJoined: false,
-        rating: 4.9,
-        createdAt: '2024-03-15',
-        endDate: '2024-12-31',
-        tags: ['Development', 'Web3', 'Blockchain'],
-        currentTask: {
-          id: '1',
-          title: 'Build a DApp',
-          description: 'Create a decentralized application using Web3 technologies',
-          deadline: '2024-04-15',
-          reward: '1000 POINTS',
-          status: 'active' as const
-        },
-        reviewBoard: {
-          id: '1',
-          members: [
-            {
-              id: '1',
-              name: 'John Doe',
-              role: 'Founder' as const,
-              avatar: 'https://picsum.photos/50'
-            },
-            {
-              id: '2',
-              name: 'Jane Smith',
-              role: 'Reviewer' as const,
-              avatar: 'https://picsum.photos/51'
-            },
-            {
-              id: '5',
-              name: 'David Chen',
-              role: 'Reviewer' as const,
-              avatar: 'https://picsum.photos/54'
-            },
-            {
-              id: '9',
-              name: 'James Wilson',
-              role: 'Reviewer' as const,
-              avatar: 'https://picsum.photos/58'
-            }
-          ],
-          rating: 4.8
-        },
-        members: [
-          {
-            id: '1',
-            name: 'John Doe',
-            avatar: 'https://picsum.photos/50',
-            role: 'Founder' as const,
-            joinDate: '2024-01-15',
-            skillPoints: 1000
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            avatar: 'https://picsum.photos/51',
-            role: 'Reviewer' as const,
-            joinDate: '2024-02-01',
-            skillPoints: 850
-          },
-          {
-            id: '3',
-            name: 'Mike Johnson',
-            avatar: 'https://picsum.photos/52',
-            role: 'Member' as const,
-            joinDate: '2024-02-15',
-            skillPoints: 650
-          },
-          {
-            id: '4',
-            name: 'Sarah Wilson',
-            avatar: 'https://picsum.photos/53',
-            role: 'Member' as const,
-            joinDate: '2024-01-20',
-            skillPoints: 720
-          },
-          {
-            id: '6',
-            name: 'Emma Davis',
-            avatar: 'https://picsum.photos/55',
-            role: 'Member' as const,
-            joinDate: '2024-01-05',
-            skillPoints: 580
-          },
-          {
-            id: '7',
-            name: 'Alex Thompson',
-            avatar: 'https://picsum.photos/56',
-            role: 'Member' as const,
-            joinDate: '2024-02-10',
-            skillPoints: 620
-          },
-          {
-            id: '8',
-            name: 'Lisa Anderson',
-            avatar: 'https://picsum.photos/57',
-            role: 'Member' as const,
-            joinDate: '2024-02-20',
-            skillPoints: 450
-          },
-          {
-            id: '10',
-            name: 'Sophie Chen',
-            avatar: 'https://picsum.photos/59',
-            role: 'Member' as const,
-            joinDate: '2024-02-05',
-            skillPoints: 680
-          }
-        ]
-      },
-      '2': {
-        id: '2',
-        name: 'DeFi Enthusiasts',
-        description: 'Discuss the latest in decentralized finance',
-        memberCount: 567,
-        imageUrl: 'https://picsum.photos/201',
-        isJoined: false,
-        rating: 4.8,
-        createdAt: '2024-03-14',
-        endDate: '2024-10-15',
-        tags: ['DeFi', 'Finance', 'Blockchain'],
-        members: [
-          {
-            id: '1',
-            name: 'Robert Zhang',
-            avatar: 'https://picsum.photos/60',
-            role: 'Founder' as const,
-            joinDate: '2024-01-10',
-            skillPoints: 1000
-          },
-          {
-            id: '2',
-            name: 'Maria Garcia',
-            avatar: 'https://picsum.photos/61',
-            role: 'Reviewer' as const,
-            joinDate: '2024-01-15',
-            skillPoints: 890
-          },
-          {
-            id: '3',
-            name: 'Kevin O\'Brien',
-            avatar: 'https://picsum.photos/62',
-            role: 'Member' as const,
-            joinDate: '2024-01-20',
-            skillPoints: 750
-          },
-          {
-            id: '4',
-            name: 'Linda Chen',
-            avatar: 'https://picsum.photos/63',
-            role: 'Member' as const,
-            joinDate: '2024-02-01',
-            skillPoints: 680
-          },
-          {
-            id: '5',
-            name: 'Tom Wilson',
-            avatar: 'https://picsum.photos/64',
-            role: 'Member' as const,
-            joinDate: '2024-02-10',
-            skillPoints: 720
-          }
-        ],
-        reviewBoard: {
-          id: '2',
-          members: [
-            {
-              id: '1',
-              name: 'Robert Zhang',
-              role: 'Founder' as const,
-              avatar: 'https://picsum.photos/60'
-            },
-            {
-              id: '2',
-              name: 'Maria Garcia',
-              role: 'Reviewer' as const,
-              avatar: 'https://picsum.photos/61'
-            }
-          ],
-          rating: 4.7
-        },
-      },
-      '3': {
-        id: '3',
-        name: 'NFT Artists',
-        description: 'A place for NFT artists to collaborate and share work',
-        memberCount: 345,
-        imageUrl: 'https://picsum.photos/202',
-        isJoined: false,
-        rating: 4.7,
-        createdAt: '2024-03-13',
-        endDate: '2024-09-30',
-        tags: ['NFT', 'Art', 'Creative'],
-        members: [
-          {
-            id: '1',
-            name: 'Alex Rivera',
-            avatar: 'https://picsum.photos/70',
-            role: 'Founder' as const,
-            joinDate: '2024-01-05',
-            skillPoints: 1000
-          },
-          {
-            id: '2',
-            name: 'Sophie Kim',
-            avatar: 'https://picsum.photos/71',
-            role: 'Reviewer' as const,
-            joinDate: '2024-01-15',
-            skillPoints: 920
-          },
-          {
-            id: '3',
-            name: 'Marcus Brown',
-            avatar: 'https://picsum.photos/72',
-            role: 'Member' as const,
-            joinDate: '2024-01-25',
-            skillPoints: 780
-          },
-          {
-            id: '4',
-            name: 'Elena Popov',
-            avatar: 'https://picsum.photos/73',
-            role: 'Member' as const,
-            joinDate: '2024-02-05',
-            skillPoints: 650
-          },
-          {
-            id: '5',
-            name: 'David Lee',
-            avatar: 'https://picsum.photos/74',
-            role: 'Member' as const,
-            joinDate: '2024-02-15',
-            skillPoints: 720
-          }
-        ],
-        reviewBoard: {
-          id: '3',
-          members: [
-            {
-              id: '1',
-              name: 'Alex Rivera',
-              role: 'Founder' as const,
-              avatar: 'https://picsum.photos/70'
-            },
-            {
-              id: '2',
-              name: 'Sophie Kim',
-              role: 'Reviewer' as const,
-              avatar: 'https://picsum.photos/71'
-            }
-          ],
-          rating: 4.6
-        },
-      },
-    };
-
-    setCommunity(mockCommunities[id as keyof typeof mockCommunities] || {
-      id: id as string,
-      name: 'Web3 Developers',
-      description: 'A community for Web3 developers to share knowledge and experiences. Join us to learn, share, and grow together in the Web3 space.',
-      memberCount: 1234,
-      imageUrl: 'https://picsum.photos/200',
-      isJoined: false,
-      rating: 4.9,
-      createdAt: '2024-03-15',
-      endDate: '2024-12-31',
-      tags: ['Development', 'Web3', 'Blockchain'],
-      members: [
-        {
-          id: '1',
-          name: 'John Doe',
-          avatar: 'https://picsum.photos/50',
-          role: 'Founder' as const,
-          joinDate: '2024-01-15',
-          skillPoints: 1000
-        },
-        {
-          id: '2',
-          name: 'Jane Smith',
-          avatar: 'https://picsum.photos/51',
-          role: 'Reviewer' as const,
-          joinDate: '2024-02-01',
-          skillPoints: 850
-        },
-        {
-          id: '3',
-          name: 'Mike Johnson',
-          avatar: 'https://picsum.photos/52',
-          role: 'Member' as const,
-          joinDate: '2024-02-15',
-          skillPoints: 650
-        }
-      ]
-    });
+    fetchCommunityDetails();
   }, [id]);
 
+  const fetchCommunityDetails = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch community details
+      const communityResponse = await api.get(`/api/user-community/${id}`);
+      const communityData = communityResponse.data;
+      console.log('Community data:', communityData);
+
+      // Fetch community logo
+      let logoUrl = 'https://picsum.photos/200'; // Default logo
+      try {
+        const logoResponse = await api.get(`/api/user-community/${id}/logo`);
+        console.log(logoResponse, 'logoResponse');
+        if (logoResponse.data && logoResponse.data.url) {
+          logoUrl = logoResponse.data.url;
+        }
+      } catch (logoErr) {
+        console.warn('Failed to fetch community logo:', logoErr);
+        // Continue with default logo
+      }
+
+      // Fetch community members
+      const membersResponse = await api.get(`/api/community-member/${id}`);
+      console.log('Raw members response:', membersResponse.data);
+      
+      // Handle different possible data structures
+      let membersData;
+      if (Array.isArray(membersResponse.data)) {
+        membersData = membersResponse.data;
+      } else if (membersResponse.data && Array.isArray(membersResponse.data.members)) {
+        membersData = membersResponse.data.members;
+      } else if (membersResponse.data && typeof membersResponse.data === 'object') {
+        // If it's a single member object, convert to array
+        membersData = [membersResponse.data];
+      } else {
+        membersData = [];
+      }
+      
+      console.log('Processed membersData:', membersData);
+
+      // Ensure all required fields are present in members data
+      const validatedMembers = membersData.map((member: any) => {
+        console.log('Processing member:', member);
+        return {
+          id: String(member.id || member.userId || ''),
+          name: member.name || member.userName || 'Unknown',
+          avatar: member.avatar || member.userAvatar || 'https://picsum.photos/200',
+          role: member.role || member.memberRole || 'Member',
+          joinDate: member.joinDate || member.createTime || new Date().toISOString().split('T')[0],
+          skillPoints: member.skillPoints || 0
+        };
+      });
+
+      console.log('Validated members:', validatedMembers);
+
+      // Create review board data from members
+      const reviewBoard = {
+        id: '1',
+        members: [
+          {
+            id: '1',
+            name: 'Admin User',
+            role: 'Founder' as const,
+            avatar: 'https://picsum.photos/50'
+          },
+          {
+            id: '2',
+            name: 'Reviewer One',
+            role: 'Reviewer' as const,
+            avatar: 'https://picsum.photos/51'
+          },
+          {
+            id: '3',
+            name: 'Reviewer Two',
+            role: 'Reviewer' as const,
+            avatar: 'https://picsum.photos/52'
+          }
+        ],
+        rating: 4.8
+      };
+
+      // Add current task data
+      const currentTask = {
+        id: '1',
+        title: 'Welcome Task',
+        description: 'Complete your profile and introduce yourself to the community',
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+        reward: '100 POINTS',
+        status: 'active' as const
+      };
+
+      // Combine all data
+      const combinedData: CommunityDetails = {
+        ...communityData,
+        imageUrl: logoUrl,
+        members: validatedMembers,
+        memberCount: validatedMembers.length,
+        isJoined: true, // Always show as joined
+        reviewBoard: reviewBoard,
+        currentTask: currentTask
+      };
+
+      console.log('Combined community data:', combinedData);
+      setCommunity(combinedData);
+    } catch (err) {
+      console.error('Error fetching community details:', err);
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 404) {
+          setError('Community not found. Please check the community ID.');
+        } else if (err.code === 'ECONNREFUSED') {
+          setError('Unable to connect to the server. Please check if the server is running.');
+        } else {
+          setError(`Failed to load community details: ${err.message}`);
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again later.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleJoinCommunity = async () => {
-    // TODO: Implement API call to join community
-    Alert.alert('Success', 'You have joined the community!');
-    setCommunity(prev => prev ? { ...prev, isJoined: true } : null);
+    try {
+      // Get current user ID from your auth context or storage
+      const currentUserId = 1; // TODO: Replace with actual user ID from auth context
+
+      const joinData = {
+        communityId: parseInt(id as string),
+        userId: currentUserId,
+        memberRole: 'Member',
+        createTime: new Date().toISOString(),
+        updateTime: new Date().toISOString(),
+        createBy: currentUserId,
+        updateBy: currentUserId
+      };
+
+      const response = await api.post('/api/community-member', joinData);
+      console.log('Join response:', response.data);
+      
+      // Update community state immediately to show joined content
+      setCommunity(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isJoined: true,
+          memberCount: (prev.memberCount || 0) + 1,
+          members: [
+            ...(prev.members || []),
+            {
+              id: String(currentUserId),
+              name: 'You', // TODO: Replace with actual user name
+              avatar: 'https://picsum.photos/200',
+              role: 'Member',
+              joinDate: new Date().toISOString().split('T')[0],
+              skillPoints: 0
+            }
+          ]
+        };
+      });
+
+      Alert.alert('Success', 'You have joined the community!');
+      
+      // Refresh community details in the background
+      fetchCommunityDetails();
+    } catch (err) {
+      console.error('Error joining community:', err);
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 409) {
+          Alert.alert('Error', 'You are already a member of this community.');
+        } else {
+          Alert.alert('Error', `Failed to join community: ${err.message}`);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to join community. Please try again.');
+      }
+    }
   };
 
   const handleUploadProof = async () => {
@@ -447,6 +333,34 @@ export default function CommunityDetailsScreen() {
     // Empty function
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7834E6" />
+          <Text style={styles.loadingText}>Loading community details...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <FontAwesome5 name="exclamation-circle" size={48} color="#ff4444" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={fetchCommunityDetails}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   if (!community) {
     return (
       <View style={styles.container}>
@@ -466,13 +380,16 @@ export default function CommunityDetailsScreen() {
         <View style={styles.content}>
           <View style={styles.sidebar}>
             <View style={styles.headerSection}>
-              {community.imageUrl && (
-                <Image 
-                  source={{ uri: community.imageUrl }} 
-                  style={styles.communityImage}
-                />
-              )}
-              <Text style={styles.title}>{community.name}</Text>
+              <Image 
+                source={{ uri: community?.imageUrl || 'https://picsum.photos/200' }} 
+                style={styles.communityImage}
+                onError={(e) => {
+                  console.warn('Failed to load community image:', e.nativeEvent.error);
+                  // Set a default image if the current one fails to load
+                  setCommunity(prev => prev ? { ...prev, imageUrl: 'https://picsum.photos/200' } : null);
+                }}
+              />
+              <Text style={styles.title}>{community?.name}</Text>
             </View>
 
             <View style={styles.statsCard}>
@@ -1052,6 +969,37 @@ const styles = StyleSheet.create({
   },
   auditButtonText: {
     color: '#7834E6',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+    padding: 20,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#7834E6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

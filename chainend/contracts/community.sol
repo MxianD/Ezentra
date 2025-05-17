@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract GoalOrientedCommunity is CommunityTypes {
     // 社区代币和质押金额
     IERC20 public communityToken;
-    uint256 public constant STAKE_AMOUNT = 100 * 10**18; // 100个代币
+    uint256 public constant STAKE_AMOUNT = 1;
 
     // reviewer相关映射
     mapping(uint256 => address[]) public reviewers; // 每个社区的reviewer列表
@@ -145,12 +145,10 @@ contract GoalOrientedCommunity is CommunityTypes {
         Category _category
     ) external payable {
         require(_startTime > block.timestamp, "Start time must be in future");
-        require(_endTime > _startTime, "End time must be after start time");
         require(_memberDeposit > 0, "Member deposit must be positive");
         require(_rewardPerMember > 0, "Reward per member must be positive");
         require(_maxMembers > 0, "Max members must be positive");
         require(msg.value >= _rewardPerMember * _maxMembers, "Insufficient reward pool");
-
         uint256 communityId = communityCount++;
         communities[communityId] = Community({
             id: communityId,
@@ -162,7 +160,7 @@ contract GoalOrientedCommunity is CommunityTypes {
             targetGoal: _targetGoal,
             memberDeposit: _memberDeposit,
             rewardPerMember: _rewardPerMember,
-            maxMembers: _maxMembers,
+            maxMembers: 100,
             totalMembers: 0,
             rewardPool: msg.value,
             depositPool: 0,
@@ -177,10 +175,6 @@ contract GoalOrientedCommunity is CommunityTypes {
     // 加入社区
     function joinCommunity(uint256 _communityId) external payable {
         Community storage community = communities[_communityId];
-        require(!community.isClosed, "Community is closed");
-        require(block.timestamp >= community.startTime, "Community not started");
-        require(block.timestamp < community.endTime, "Community ended");
-        require(community.totalMembers < community.maxMembers, "Community full");
         require(msg.value == community.memberDeposit, "Incorrect deposit amount");
         require(members[_communityId][msg.sender].joinTime == 0, "Already joined");
 

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Linking } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image, Linking, ActivityIndicator } from 'react-native';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Navigator from '@/components/Navigator/Navigator';
+import { ethers } from 'ethers';
+import "@ethersproject/shims";
 
 interface ProofFile {
   id: number;
@@ -38,6 +40,21 @@ interface Reviewer {
   reviewCount: number;
 }
 
+const mockUserAbilityAbi = [
+  'function recordCompletion(uint256 _communityId) external'
+];
+
+const CONTRACT_ADDRESS = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed';
+const ABI = [
+  "function getSubmissionUrl(uint256 _communityId, address _member) external view returns (string)",
+  "function getScores(uint256 _communityId, address _member) external view returns (tuple(address senator, uint256 score, string comment)[])",
+  "function getMemberStatus(uint256 _communityId, address _member) external view returns (bool isScored, bool isApproved)",
+  "function reviewerScore(uint256 _communityId, address _member, uint256 _score, string _comment) external",
+  "function senateAuditScore(uint256 _communityId, address _member, uint256 _score, string _comment) external"
+];
+
+const ipfsGateway = 'https://dweb.link/ipfs/';
+
 export default function CommunityAuditScreen() {
   const { id } = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,7 +63,44 @@ export default function CommunityAuditScreen() {
   const [score, setScore] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [reviewedFiles, setReviewedFiles] = useState<ReviewedFile[]>([]);
+  const [reviewedFiles, setReviewedFiles] = useState<ReviewedFile[]>([
+    {
+      id: '1',
+      fileName: 'proof1.jpg',
+      submitter: 'Member 101',
+      score: 0,
+      reviewDate: '2024-05-01',
+      status: 'pending',
+      proofHash: 'QmTestHash1'
+    },
+    {
+      id: '2',
+      fileName: 'proof2.pdf',
+      submitter: 'Member 102',
+      score: 85,
+      reviewDate: '2024-05-02',
+      status: 'approved',
+      proofHash: 'QmTestHash2'
+    },
+    {
+      id: '3',
+      fileName: 'proof3.png',
+      submitter: 'Member 103',
+      score: 60,
+      reviewDate: '2024-05-03',
+      status: 'rejected',
+      proofHash: 'QmTestHash3'
+    },
+    {
+      id: '4',
+      fileName: 'proof4.docx',
+      submitter: 'Member 104',
+      score: 0,
+      reviewDate: '2024-05-04',
+      status: 'pending',
+      proofHash: 'QmTestHash4'
+    }
+  ]);
 
   // Fetch files from API
   useEffect(() => {
@@ -122,7 +176,7 @@ export default function CommunityAuditScreen() {
     }
   };
 
-  const handleScoreSubmit = () => {
+  const handleScoreSubmit = async () => {
     if (!selectedFile || !score) return;
 
     const scoreNum = parseInt(score);
@@ -131,6 +185,7 @@ export default function CommunityAuditScreen() {
       return;
     }
 
+    // 1. 先更新本地状态
     const updatedFiles = reviewedFiles.map(file => {
       if (file.id === selectedFile.id) {
         return {
@@ -142,47 +197,76 @@ export default function CommunityAuditScreen() {
       }
       return file;
     });
-
     setReviewedFiles(updatedFiles);
     setIsModalVisible(false);
     setScore('');
     setSelectedFile(null);
+
+    // 2. 调用 MockUserAbility 合约
+    try {
+      const { ethereum } = window;
+      if (!ethereum) {
+        Alert.alert('请先安装MetaMask');
+        return;
+      }
+      await ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const signer = provider.getSigner();
+      const mockUserAbilityAddress = '0x3Aa5ebB10DC797CAC828524e59A333d0A371443c'; // 替换为实际部署的MockUserAbility地址
+      const mockUserAbility = new ethers.Contract(mockUserAbilityAddress, mockUserAbilityAbi, signer);
+
+      const communityIdNum = parseInt(id as string);
+
+      // 这一步会弹出MetaMask
+      const tx = await mockUserAbility.recordCompletion(communityIdNum);
+      await tx.wait();
+      Alert.alert('Mock链上交互成功（能力分已同步）');
+    } catch (err: any) {
+      Alert.alert('Mock链上交互失败: ' + (err.reason || err.message));
+      console.error(err);
+    }
   };
 
-  const handleDownload = async (file: ReviewedFile) => {
-    if (!file.proofHash) {
-      Alert.alert('Error', 'No file hash available');
-      return;
-    }
-
+  const handleDownload = async (memberAddress: string) => {
     try {
-      const ipfsGateway = 'https://dweb.link/ipfs/';
-      const downloadUrl = `${ipfsGateway}${file.proofHash}`;
+      const { ethereum } = window;
+      if (!ethereum) {
+        Alert.alert('Error', 'Please install MetaMask!');
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
       
-      Alert.alert(
-        'Download File',
-        `Would you like to download ${file.fileName}?`,
-        [
-          {
-            text: 'Open in Browser',
-            onPress: async () => {
-              const supported = await Linking.canOpenURL(downloadUrl);
-              if (supported) {
-                await Linking.openURL(downloadUrl);
-              } else {
-                Alert.alert('Error', 'Cannot open URL in browser');
-              }
-            }
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          }
-        ]
-      );
+      // 从合约获取提交的 IPFS hash
+      const submissionUrl = await contract.getSubmissionUrl(parseInt(id as string), memberAddress);
+      if (!submissionUrl) {
+        Alert.alert('Error', 'No submission found for this member');
+        return;
+      }
+
+      const downloadUrl = `${ipfsGateway}${submissionUrl}`;
+      try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          throw new Error('Failed to download file');
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `submission_${memberAddress}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error('Error downloading file:', error);
+        Alert.alert('Error', 'Failed to download file. Please try again.');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to prepare file for download');
-      console.error('Error preparing download:', error);
+      console.error('Error getting submission URL:', error);
+      Alert.alert('Error', 'Failed to get submission URL. Please try again.');
     }
   };
 
@@ -303,7 +387,7 @@ export default function CommunityAuditScreen() {
                 </View>
                 <TouchableOpacity 
                   style={styles.downloadButton}
-                  onPress={() => handleDownload(file)}
+                  onPress={() => handleDownload(file.submitter)}
                 >
                   <FontAwesome5 name="download" size={14} color="#7834E6" />
                   <Text style={styles.downloadButtonText}>Download</Text>

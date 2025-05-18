@@ -148,7 +148,7 @@ function Navigator() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/")} style={styles.DAO_name}>
-        <Text style={styles.DAO_name_text}>MetaBuilder DAO</Text>
+        <Text style={styles.DAO_name_text}>Ezentra</Text>
       </TouchableOpacity>
 
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>

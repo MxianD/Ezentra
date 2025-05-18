@@ -74,6 +74,27 @@ interface CommunityMember {
   skillPoints: number;
 }
 
+const CONTRACT_ADDRESS = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed';
+const ABI = [
+  "function createCommunity(string _name, string _description, string _targetGoal, uint256 _startTime, uint256 _endTime, uint256 _memberDeposit, uint256 _rewardPerMember, uint256 _maxMembers, uint8 _category) external payable",
+  "function joinCommunity(uint256 _communityId) external payable",
+  "function submitCompletion(uint256 _communityId, string _submissionUrl) external",
+  "function reviewerScore(uint256 _communityId, address _member, uint256 _score, string _comment) external",
+  "function senateAuditScore(uint256 _communityId, address _member, uint256 _score, string _comment) external",
+  "function claimReward(uint256 _communityId) external",
+  "function closeCommunityByAuthor(uint256 _communityId) external",
+  "function voteForClose(uint256 _communityId, bool _vote) external",
+  "function proposeCloseCommunity(uint256 _communityId) external",
+  "function getMemberCount(uint256 communityId) external view returns (uint256)",
+  "function getScores(uint256 _communityId, address _member) external view returns (tuple(address senator, uint256 score, string comment)[])",
+  "function getMemberStatus(uint256 _communityId, address _member) external view returns (bool isScored, bool isApproved)",
+  "function STAKE_AMOUNT() external view returns (uint256)",
+  "function communityToken() external view returns (address)",
+  "function communities(uint256) external view returns (uint256 id, string name, string description, address creator, uint256 startTime, uint256 endTime, string targetGoal, uint256 memberDeposit, uint256 rewardPerMember, uint256 maxMembers, uint256 totalMembers, uint256 rewardPool, uint256 depositPool, bool isClosed, uint8 category, uint256 passingScore)",
+  "function communityCount() external view returns (uint256)",
+  "function getMemberCount(uint256) external view returns (uint256)"
+];
+
 export default function CommunityDetailsScreen() {
   const { id } = useLocalSearchParams();
   const [community, setCommunity] = useState<CommunityDetails | null>(null);
@@ -81,9 +102,13 @@ export default function CommunityDetailsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [hasGeneratedKeys, setHasGeneratedKeys] = useState(false);
 
   useEffect(() => {
     fetchCommunityDetails();
+    if (id) {
+      checkCommunityKeys(Number(id));
+    }
   }, [id]);
 
   const fetchCommunityDetails = async () => {
@@ -313,13 +338,8 @@ export default function CommunityDetailsScreen() {
       // 调用智能合约加入社区
       console.log('Initializing contract...');
       const communityContract = new ethers.Contract(
-        '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', // 本地测试网络合约地址
-        [
-          'function joinCommunity(uint256 _communityId) external payable',
-          'function STAKE_AMOUNT() view returns (uint256)',
-          'function communities(uint256) view returns (uint256 id, string name, string description, address creator, uint256 startTime, uint256 endTime, string targetGoal, uint256 memberDeposit, uint256 rewardPerMember, uint256 maxMembers, uint256 totalMembers, uint256 rewardPool, uint256 depositPool, bool isClosed, uint8 category, uint256 passingScore)',
-          'function communityToken() external view returns (address)'
-        ],
+        CONTRACT_ADDRESS,
+        ABI,
         signer
       );
 
@@ -357,13 +377,13 @@ export default function CommunityDetailsScreen() {
       console.log('Token balance:', tokenBalance.toString());
 
       // 检查当前授权额度
-      const currentAllowance = await tokenContract.allowance(userAddress, communityContract.address);
+      const currentAllowance = await tokenContract.allowance(userAddress, CONTRACT_ADDRESS);
       console.log('Current allowance:', currentAllowance.toString());
 
       // 如果授权额度不足，请求授权
       if (currentAllowance.lt(stakeAmount)) {
         console.log('Approving tokens...');
-        const approveTx = await tokenContract.approve(communityContract.address, stakeAmount);
+        const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, stakeAmount);
         console.log('Approval transaction sent:', approveTx.hash);
         await approveTx.wait();
         console.log('Approval confirmed');
@@ -375,7 +395,7 @@ export default function CommunityDetailsScreen() {
         parseInt(id as string),
         { 
           value: communityInfo.memberDeposit,
-          gasLimit: 1000000 // 增加gas限制
+          gasLimit: 1000000
         }
       );
       console.log('Transaction sent:', tx.hash);
@@ -516,8 +536,8 @@ export default function CommunityDetailsScreen() {
             const provider = new ethers.providers.Web3Provider(ethereum);
             const signer = provider.getSigner();
             const communityContract = new ethers.Contract(
-              '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', // 本地测试网络合约地址
-              ['function submitCompletion(uint256 _communityId, string memory _submissionUrl)'],
+              CONTRACT_ADDRESS,
+              ABI,
               signer
             );
 
@@ -561,6 +581,71 @@ export default function CommunityDetailsScreen() {
 
   const toggleAbility = (ability: string) => {
     // Empty function
+  };
+
+  // 检查社区密钥是否已生成
+  const checkCommunityKeys = async (communityId: number) => {
+    try {
+      const { ethereum } = window;
+      if (!ethereum) return false;
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const network = await provider.getNetwork();
+      console.log('当前网络:', network);
+      if (network.chainId !== 31337) { // 31337 是 Hardhat 默认 chainId
+        Alert.alert('请切换到本地测试网络');
+        return false;
+      }
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+      const result = await contract.hasGeneratedKeys(communityId);
+      setHasGeneratedKeys(result);
+      return result;
+    } catch (err: any) {
+      setHasGeneratedKeys(false);
+      return false;
+    }
+  };
+
+  // 生成社区密钥
+  const handleSetCommunityKeys = async () => {
+    try {
+      const { ethereum } = window;
+      if (!ethereum) {
+        Alert.alert('请先安装MetaMask');
+        return;
+      }
+      await ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const network = await provider.getNetwork();
+      console.log('当前网络:', network);
+      if (network.chainId !== 31337) {
+        Alert.alert('请切换到本地测试网络');
+        return;
+      }
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+      const communityIdNum = parseInt(id as string);
+      console.log('当前 communityId:', communityIdNum);
+      
+      // 获取社区信息
+      const communityInfo = await contract.communities(communityIdNum);
+      console.log('Community info:', communityInfo);
+
+      // 检查是否是社区创建者
+      if (communityInfo.creator.toLowerCase() !== (await signer.getAddress()).toLowerCase()) {
+        Alert.alert('Error', 'Only community creator can generate keys');
+        return;
+      }
+
+      // 生成密钥
+      const publicKey = 'test_public_key_' + Date.now();
+      const tx = await contract.setCommunityKeys(communityIdNum, publicKey);
+      await tx.wait();
+      Alert.alert('社区密钥生成成功！');
+      setHasGeneratedKeys(true);
+    } catch (err: any) {
+      Alert.alert('生成密钥失败: ' + (err.reason || err.message));
+      console.error(err);
+    }
   };
 
   if (isLoading) {
@@ -658,10 +743,18 @@ export default function CommunityDetailsScreen() {
                   <Text style={styles.joinButtonText}>Join Community</Text>
                 </TouchableOpacity>
               )}
+              {!hasGeneratedKeys && (
+                <TouchableOpacity
+                  style={[styles.joinButton, { marginTop: 12 }]}
+                  onPress={handleSetCommunityKeys}
+                >
+                  <Text style={styles.joinButtonText}>Generate Key</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Add Audit Button for Reviewers */}
-            {community.reviewBoard?.members.some(member => member.role === 'Reviewer') && (
+            {/* {community.reviewBoard?.members.some(member => member.role === 'Reviewer') && ( */}
               <TouchableOpacity 
                 style={styles.auditButton}
                 onPress={() => router.push(`/community/${id}/audit`)}
@@ -669,7 +762,7 @@ export default function CommunityDetailsScreen() {
                 <FontAwesome5 name="shield-alt" size={16} color="#7834E6" />
                 <Text style={styles.auditButtonText}>Audit Panel</Text>
               </TouchableOpacity>
-            )}
+            {/* )} */}
 
             {community.tags && community.tags.length > 0 && (
               <View style={styles.tagsCard}>

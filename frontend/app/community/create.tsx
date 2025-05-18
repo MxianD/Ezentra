@@ -67,7 +67,7 @@ const AVAILABLE_TAGS = [
   'Community', 'DAO', 'Governance', 'Technical'
 ];
 
-const CONTRACT_ADDRESS = '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
+const CONTRACT_ADDRESS = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed';
 const ABI = [
   "function createCommunity(string _name, string _description, string _targetGoal, uint256 _startTime, uint256 _endTime, uint256 _memberDeposit, uint256 _rewardPerMember, uint256 _maxMembers, uint8 _category) external payable",
   "function joinCommunity(uint256 _communityId) external payable",
@@ -513,12 +513,12 @@ export default function CreateCommunityScreen() {
         // 创建社区
         const now = new Date();
         const communityRequestData = {
-          communityName: form.name,
-          communityDescription: form.description,
+        communityName: form.name,
+        communityDescription: form.description,
           communityLabelId: category + 1,
           createBy: userId,
           createTime: now.toISOString(),
-          expireTime: form.endTime.toISOString(),
+        expireTime: form.endTime.toISOString(),
           userId: userId,
           updateBy: userId,
           updateTime: now.toISOString(),
@@ -551,8 +551,8 @@ export default function CreateCommunityScreen() {
         };
 
         const memberResponse = await axios.post('http://localhost:8080/api/community-member', memberRequestData, {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        headers: { 'Content-Type': 'application/json' }
+      });
 
         if (memberResponse.data.code !== 200) {
           throw new Error(memberResponse.data.message || 'Failed to add community member');

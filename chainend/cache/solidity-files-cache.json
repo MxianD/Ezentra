@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\community.sol": {
-      "lastModificationDate": 1747504802021,
-      "contentHash": "6bfbcf897ec04510800af78240d07faf",
+      "lastModificationDate": 1747513462371,
+      "contentHash": "32a74803f33ac9a49ca807fb35d7d63b",
       "sourceName": "contracts/community.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -196,8 +196,8 @@
       ]
     },
     "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\SubmissionManager.sol": {
-      "lastModificationDate": 1747466544455,
-      "contentHash": "5264eb0e7733dbc7c013cf5d8cc60f73",
+      "lastModificationDate": 1747509459386,
+      "contentHash": "224355fb5badd4c0a5580be2e8f97dfa",
       "sourceName": "contracts/SubmissionManager.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -506,6 +506,43 @@
       ],
       "artifacts": [
         "MockCommunity"
+      ]
+    },
+    "C:\\Users\\k\\Desktop\\Ezentra\\chainend\\contracts\\MockUserAbility.sol": {
+      "lastModificationDate": 1747516230651,
+      "contentHash": "55abb0bc43501c4b6a5266dba7873d65",
+      "sourceName": "contracts/MockUserAbility.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "MockUserAbility"
       ]
     }
   }

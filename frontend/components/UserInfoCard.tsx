@@ -94,7 +94,9 @@ export default function Card() {
               <View style={styles.avatarBorder} />
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.username}>UserName</Text>
+              <Text style={styles.username}>0x7099
+                
+              </Text>
               <Text style={styles.userTitle}>Web3 Developer</Text>
               <View style={styles.levelContainer}>
                 <FontAwesome5 name="star" size={16} color="#FFD700" />

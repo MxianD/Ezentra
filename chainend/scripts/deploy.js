@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
   // 部署 TestToken
@@ -61,6 +62,8 @@ async function main() {
     }
   }
 }
+
+
 
 main().catch((error) => {
   console.error(error);

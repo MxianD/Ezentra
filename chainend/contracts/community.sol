@@ -73,11 +73,6 @@ contract GoalOrientedCommunity is CommunityTypes {
     mapping(uint256 => bool) public hasGeneratedKeys;  // 社区是否已经生成了密钥对
     mapping(uint256 => uint256) public encryptedKeysCount;  // 记录已加密的解密私钥数量
 
-    // 在合约顶部添加 reviewer 常量
-    address constant reviewer1 = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-    address constant reviewer2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-    address constant reviewer3 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-
     // 事件定义
     event CommunityCreated(uint256 indexed id, address creator, Category category);
     event MemberJoined(uint256 indexed id, address member);
@@ -100,19 +95,19 @@ contract GoalOrientedCommunity is CommunityTypes {
     // 设置社区的密钥对
     function setCommunityKeys(uint256 _communityId, string memory _encryptionKey) external {
         require(!hasGeneratedKeys[_communityId], "Keys already generated");
-        // require(bytes(_encryptionKey).length > 0, "Invalid encryption key"); // [注] 暂时注释掉公钥检查，后续如需加密可恢复
+        require(bytes(_encryptionKey).length > 0, "Invalid encryption key");
 
-        // communityEncryptionKey[_communityId] = _encryptionKey; // [注] 暂时注释掉公钥存储，后续如需加密可恢复
+        communityEncryptionKey[_communityId] = _encryptionKey;
         hasGeneratedKeys[_communityId] = true;
         encryptedKeysCount[_communityId] = 0;
 
-        // emit CommunityKeysGenerated(_communityId, _encryptionKey); // [注] 暂时注释掉事件，后续如需加密可恢复
+        emit CommunityKeysGenerated(_communityId, _encryptionKey);
     }
 
     // 为reviewer或senator设置加密后的私钥
     function setEncryptedDecryptionKey(uint256 _communityId, address _accessor, string memory _encryptedKey, bool _isSenator) external {
         require(hasGeneratedKeys[_communityId], "Keys not generated yet");
-        // require(bytes(_encryptedKey).length > 0, "Invalid encrypted key"); // [注] 暂时注释掉加密私钥检查，后续如需加密可恢复
+        require(bytes(_encryptedKey).length > 0, "Invalid encrypted key");
         
         if (_isSenator) {
             require(senateContract.isSenator(_accessor, communities[_communityId].category),
@@ -128,12 +123,12 @@ contract GoalOrientedCommunity is CommunityTypes {
             require(isReviewer, "Not a valid reviewer");
         }
 
-        // require(bytes(encryptedDecryptionKeys[_communityId][_accessor]).length == 0, "Key already set"); // [注] 暂时注释掉重复加密检查，后续如需加密可恢复
+        require(bytes(encryptedDecryptionKeys[_communityId][_accessor]).length == 0, "Key already set");
 
-        // encryptedDecryptionKeys[_communityId][_accessor] = _encryptedKey; // [注] 暂时注释掉加密私钥存储，后续如需加密可恢复
+        encryptedDecryptionKeys[_communityId][_accessor] = _encryptedKey;
         encryptedKeysCount[_communityId]++;
 
-        // emit PrivateKeyEncrypted(_communityId, _accessor, _isSenator); // [注] 暂时注释掉事件，后续如需加密可恢复
+        emit PrivateKeyEncrypted(_communityId, _accessor, _isSenator);
     }
 
     // 创建新社区
@@ -173,26 +168,7 @@ contract GoalOrientedCommunity is CommunityTypes {
             passingScore: senateContract.getMinPassScore(_category)
         });
 
-        // 添加3个固定reviewer
-        address[3] memory defaultReviewers = [reviewer1, reviewer2, reviewer3];
-        for (uint i = 0; i < 3; i++) {
-            reviewers[communityId].push(defaultReviewers[i]);
-            members[communityId][defaultReviewers[i]] = Member({
-                joinTime: block.timestamp,
-                isApproved: false,
-                hasClaimed: false,
-                submissionUrl: "",
-                finalScore: 0,
-                isScored: false,
-                isReviewer: true,
-                hasVotedForClose: false,
-                closeVote: false,
-                totalReviewerScores: 0,
-                reviewerCount: 0
-            });
-        }
-
-        // 自动将创建者加入成员列表（不是 reviewer）
+        // 自动将创建者加入成员列表
         members[communityId][msg.sender] = Member({
             joinTime: block.timestamp,
             isApproved: false,
@@ -260,7 +236,7 @@ contract GoalOrientedCommunity is CommunityTypes {
         require(!community.isClosed, "Community is closed");
         require(!member.isScored, "Already submitted");
         require(bytes(_submissionUrl).length > 0, "Empty submission URL");
-        // require(hasGeneratedKeys[_communityId], "Community keys not generated"); // [注] 暂时注释掉密钥检查，后续如需加密可恢复
+        require(hasGeneratedKeys[_communityId], "Community keys not generated");
 
         member.submissionUrl = _submissionUrl;
         emit SubmissionUploaded(_communityId, msg.sender, _submissionUrl);
